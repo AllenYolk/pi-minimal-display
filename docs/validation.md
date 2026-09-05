@@ -1,6 +1,14 @@
 # Validation
 
-Current trial candidate: 0.1.0-rc.4. The silent-toggle update is tracked in [issue #16](https://github.com/AllenYolk/pi-minimal-display/issues/16). The owner selected removal of the redundant transcript notification, not Starship/footer integration or npm publication. Older version evidence below is historical, not certification of later code.
+Current trial candidate: rc.5 development. Native-only thinking visibility is tracked in issue #18; the current installed rc.4 trial is intentionally unchanged. Thinking display follows Pi's native `hideThinkingBlock` setting; the plugin has no corresponding setting. Older version evidence below is historical, not certification of later code.
+
+## Native thinking visibility
+
+Rollout diagnosis confirmed that MiniMax-M3 is reasoning-capable and the latest local spikingjelly-v2 rollout contains non-empty `thinking` blocks. The prior apparent conflict came from rc.4's plugin-level `hideThinking` default overriding Pi's native `hideThinkingBlock: false`. This change removes that field and the Assistant update/render patch entirely. The plugin now observes the native Assistant transcript state only; visible thinking intentionally splits adjacent tool groups and can reduce compression. Use Pi's native settings to choose visibility.
+
+For migration, an old boolean `hideThinking` key is validated and ignored rather than copied into the new runtime config; it no longer controls rendering.
+
+38 local checks pass after removing the Assistant presentation patch and reducing certified host methods to the container and expansion-status seam. Native-visible and native-hidden Assistant components both remain unchanged under plugin installation; no plugin-owned thinking state or restoration path remains.
 
 ## Silent native expansion
 
@@ -46,10 +54,10 @@ On macOS arm64, Node 24.12.0 and Pi 0.85.0, 24 checks passed after building/type
 
 - Profile defaults, exact overrides, malformed configuration and native fallback.
 - Real Pi component rendering, user/skill boundaries, direct transcript-array edits, pending+failed summaries, native recovery, narrow commands and mouse expansion.
-- Repeated install/dispose with thinking restoration and preservation of original streaming/message data.
-- Real bundled Pi CLI in a PTY executing a fixed `printf` fixture, rendering a group and reloading ten times while alternating thinking configuration.
+- Repeated install/dispose with native thinking visibility and preservation of original streaming/message data.
+- Real bundled Pi CLI in a PTY executing a fixed `printf` fixture, rendering a group and reloading ten times while alternating native expansion state.
 - Actual npm tarball inspection and isolated installation with peer auto-install disabled, followed by real CLI loading and two reloads.
-- Review regressions: image-only user turns, existing thinking restoration, newly arriving expanded members, native-hidden result text, RPC inactivity, prior prototype conflicts, and native renderer buttons.
+- Review regressions: image-only user turns, native thinking visibility, newly arriving expanded members, native result rendering, RPC inactivity, prior prototype conflicts, and native renderer buttons.
 - Disposed sessions are garbage-collectible even when another extension retains a wrapper; stale mouse wrappers are inert, and session-projection faults report once and recover native rendering.
 - Real InteractiveMode with an isolated runtime: saved JSONL reopening and replay, branch/fork persistence and transcript rebuilding, editor Ctrl+O dispatch, mouse group expansion/collapse, follow-up queue presentation and non-consumption, synthetic streaming/partial/failure/abort events, and byte-identical native/expanded iTerm2 PNG payloads. Rendering and expansion preserve session/model snapshots.
 
@@ -74,7 +82,7 @@ These numbers describe this synthetic workload only. Reproduce with `npm run ben
 
 Source: Pi's [large-session.jsonl at v0.85.0](https://github.com/earendil-works/pi/blob/v0.85.0/packages/coding-agent/test/fixtures/large-session.jsonl), a public recorded session dated 2025-11-20. SHA-256: `f029e59c3aec82fd6227eae51fc8839862a92b5e2426731ea9715eaf968a0ba4`. No private owner session was read. The fixture is downloaded into ignored work space, not redistributed in the package.
 
-The benchmark imports its 914 message entries into an in-memory session and constructs real user/assistant/tool components, without executing recorded commands or migrating the source file. It includes 88 user messages and 391 tool calls (bash/read/edit/write). This is a component-level rendering benchmark, distinct from the InteractiveMode replay check above. Same Node/Pi/platform, width, warmups and samples as the synthetic measurement; extension defaults include hiding thinking.
+The benchmark imports its 914 message entries into an in-memory session and constructs real user/assistant/tool components, without executing recorded commands or migrating the source file. It includes 88 user messages and 391 tool calls (bash/read/edit/write). This is a component-level rendering benchmark, distinct from the InteractiveMode replay check above. Same Node/Pi/platform, width, warmups and samples as the synthetic measurement; the fixture uses Pi's native thinking visibility.
 
 | View | Native lines | Compact lines | Native median | Compact median |
 | --- | ---: | ---: | ---: | ---: |

@@ -195,11 +195,11 @@ test('image-only user messages in the session split groups even without a visibl
   } finally { dispose(); }
 });
 
-test('hidden thinking, streamed narrative, native tools and host warnings stop grouping', () => {
+test('native hidden thinking, streamed narrative, native tools and host warnings stop grouping', () => {
   const dispose = installPresentation(config, Pi.VERSION, () => {});
   try {
     const transcript = new Container();
-    const assistant = new AssistantMessageComponent();
+    const assistant = new AssistantMessageComponent(undefined, true);
     transcript.children.push(tool('bash', 'before', 'BEFORE'), assistant, tool('bash', 'after', 'AFTER'));
     assert.match(transcript.render(100).join('\n'), /bash ×2/);
     assistant.updateContent({ role: 'assistant', content: [{ type: 'thinking', thinking: 'HIDDEN NARRATIVE' }], stopReason: 'stop' }, true);
@@ -216,13 +216,21 @@ test('hidden thinking, streamed narrative, native tools and host warnings stop g
   } finally { dispose(); }
 });
 
-test('existing thinking is hidden on the next render, then restored on disposal', () => {
+test('thinking visibility follows native config without a plugin patch', () => {
   const message = { role: 'assistant', content: [{ type: 'thinking', thinking: 'EARLIER THINKING' }], stopReason: 'stop' };
-  const component = new AssistantMessageComponent(message);
-  const dispose = installPresentation(config, '0.85.0', () => {});
-  try { assert.doesNotMatch(component.render(80).join('\n'), /EARLIER THINKING/); }
-  finally { dispose(); }
-  assert.match(component.render(80).join('\n'), /EARLIER THINKING/);
+  const originalUpdate = AssistantMessageComponent.prototype.updateContent;
+  const originalRender = AssistantMessageComponent.prototype.render;
+  for (const hide of [false, true]) {
+    const component = new AssistantMessageComponent(message, hide);
+    const dispose = installPresentation(config, '0.85.0', () => {});
+    try {
+      assert.equal(AssistantMessageComponent.prototype.updateContent, originalUpdate);
+      assert.equal(AssistantMessageComponent.prototype.render, originalRender);
+      const output = component.render(80).join('\n');
+      if (hide) assert.doesNotMatch(output, /EARLIER THINKING/);
+      else assert.match(output, /EARLIER THINKING/);
+    } finally { dispose(); }
+  }
 });
 
 test('expanded tools match native output without duplicating raw data or changing results', () => {
@@ -398,7 +406,7 @@ test('click expansion uses the projected group layout even after resizing', () =
   } finally { dispose(); }
 });
 
-test('thinking visibility and streaming survive disable and repeated installation', () => {
+test('thinking visibility and streaming remain native across repeated installation', () => {
   const message = { role: 'assistant', content: [{ type: 'thinking', thinking: 'PRIVATE THOUGHT' }, { type: 'text', text: 'PUBLIC TEXT' }], stopReason: 'stop' };
   const serialized = JSON.stringify(message);
   for (let index = 0; index < 10; index++) {
@@ -408,7 +416,7 @@ test('thinking visibility and streaming survive disable and repeated installatio
       component.updateContent(message, true);
       assert.equal(component.isStreaming, true);
       assert.equal(component.lastMessage, message);
-      assert.doesNotMatch(component.render(80).join('\n'), /PRIVATE THOUGHT|Thinking/);
+      assert.match(component.render(80).join('\n'), /PRIVATE THOUGHT/);
       assert.match(component.render(80).join('\n'), /PUBLIC TEXT/);
       dispose();
       assert.match(component.render(80).join('\n'), /PRIVATE THOUGHT/);

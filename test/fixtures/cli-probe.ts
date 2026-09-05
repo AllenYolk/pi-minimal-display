@@ -1,13 +1,12 @@
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
-import { writeFileSync, mkdirSync } from 'node:fs';
-import { join } from 'node:path';
+import { writeFileSync } from 'node:fs';
 import { Container } from '@earendil-works/pi-tui';
-import { ToolExecutionComponent, UserMessageComponent, AssistantMessageComponent, InteractiveMode, createBashToolDefinition, getAgentDir, type ExtensionAPI } from '@earendil-works/pi-coding-agent';
+import { ToolExecutionComponent, UserMessageComponent, AssistantMessageComponent, InteractiveMode, createBashToolDefinition, type ExtensionAPI } from '@earendil-works/pi-coding-agent';
 
 export default function probe(pi: ExtensionAPI) {
   const baseline = Container.prototype.render;
-  const fingerprints = [Container.prototype.render, Container.prototype.handleMouse, AssistantMessageComponent.prototype.updateContent, AssistantMessageComponent.prototype.render, InteractiveMode.prototype.setToolsExpanded, InteractiveMode.prototype.showStatus].map(method => createHash('sha256').update(Function.prototype.toString.call(method)).digest('hex'));
+  const fingerprints = [Container.prototype.render, Container.prototype.handleMouse, InteractiveMode.prototype.setToolsExpanded, InteractiveMode.prototype.showStatus].map(method => createHash('sha256').update(Function.prototype.toString.call(method)).digest('hex'));
   const key = Symbol.for('pi-minimal-display/cli-probe');
   const store = globalThis as typeof globalThis & { [key]?: { round: number; baseline: typeof baseline } };
   const run = store[key] ??= { round: 0, baseline };
@@ -40,15 +39,11 @@ export default function probe(pi: ExtensionAPI) {
         assert.doesNotMatch(transcript.render(80).join('\n'), /Retained data/);
         const message = { role: 'assistant', content: [{ type: 'thinking', thinking: 'hidden thinking' }, { type: 'text', text: 'visible text' }], stopReason: 'stop' } as const;
         const component = new AssistantMessageComponent(message as never);
-        if (run.round % 2 === 0) assert.doesNotMatch(component.render(80).join('\n'), /hidden thinking/);
-        else assert.match(component.render(80).join('\n'), /hidden thinking/);
+        assert.match(component.render(80).join('\n'), /hidden thinking/);
         const reloads = Number(process.env.PI_DISPLAY_PROBE_RELOADS ?? 0);
         if (run.round < reloads) {
           run.round++;
           ctx.ui.setToolsExpanded(run.round % 2 === 1);
-          const configDir = join(getAgentDir(), 'extensions/pi-minimal-display');
-          mkdirSync(configDir, { recursive: true });
-          writeFileSync(join(configDir, 'config.json'), JSON.stringify({ hideThinking: run.round % 2 === 0 }));
           await ctx.reload();
           process.stdout.write('\nPI_DISPLAY_PROBE_READY\n');
           return;

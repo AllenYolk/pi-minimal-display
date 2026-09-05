@@ -85,7 +85,8 @@ try {
   }
   assert.match(collapsed, /bash ×1 read ×1/);
   assert.equal((collapsed.match(/bash ×1/g) ?? []).length, 2, 'image-only user arrival separates turns');
-  assert.doesNotMatch(collapsed, /REPLAY_OUTPUT|REPLAY THINKING|SECOND_TURN/);
+  assert.match(collapsed, /REPLAY THINKING/);
+  assert.doesNotMatch(collapsed, /REPLAY_OUTPUT|SECOND_TURN/);
   assert.deepEqual(images(collapsed), []);
   mode.defaultEditor.handleInput(expandInput);
   const expanded = render();
@@ -162,7 +163,7 @@ try {
   assert.equal(mode.streamingComponent.isStreaming, true);
   assert.equal(JSON.stringify(pending), pendingBefore);
   assert.match(render(), /LIVE COMMENTARY/);
-  assert.doesNotMatch(render(), /LIVE THINKING/);
+  assert.match(render(), /LIVE THINKING/);
   assert.match(render(), /bash ×2[\s\S]*2 pending/);
   for (const id of ['live-failure', 'live-pending']) {
     await mode.handleEvent({ type: 'tool_execution_start', toolCallId: id, toolName: 'bash', args: { command: 'fixture' } });

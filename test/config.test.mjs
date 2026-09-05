@@ -28,13 +28,13 @@ test('config file follows the supplied profile and supports exact tool overrides
   assert.equal(config.tools.read, 'native');
   assert.equal(config.tools.web_search, 'count_only');
   assert.equal(config.tools.bash, 'lines');
-  assert.equal(config.hideThinking, false);
   assert.equal(config.default, 'native');
   assert.equal(config.tools.ask_user_question, 'count_only');
+  assert.equal('hideThinking' in config, false);
 });
 
 test('invalid configuration falls back entirely with an actionable path', () => {
-  for (const raw of ['{', 'null', '[]', 'true', '{"grouping":"false"}', '{"hideThnking":true}', '{"tools":{"bash":"invisible"}}', '{"tools":null}', '{"bash":{"outputLines":-1}}', '{"bash":{"maxCommandChars":0}}', '{"bash":{"outputLines":1.5}}']) {
+  for (const raw of ['{', 'null', '[]', 'true', '{"grouping":"false"}', '{"hideThinking":"false"}', '{"hideThnking":true}', '{"tools":{"bash":"invisible"}}', '{"tools":null}', '{"bash":{"outputLines":-1}}', '{"bash":{"maxCommandChars":0}}', '{"bash":{"outputLines":1.5}}']) {
     const agentDir = mkdtempSync('work/config-');
     const dir = join(agentDir, 'extensions/pi-minimal-display');
     mkdirSync(dir, { recursive: true });

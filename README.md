@@ -11,7 +11,7 @@ Failed tools are named in the summary, even while other calls are pending. Click
 
 Summaries use the current Pi theme and native tool-card padding/backgrounds. Failure takes precedence over pending work when selecting a background. Colored padding is clickable; the preceding blank line is not. Startup, new, resumed and forked sessions automatically begin minimal; `/reload` preserves Pi's current global expansion state. The existing tool shortcut (Ctrl+O by default) remains a two-state minimal/expanded toggle, including when rebound. This toggle is intentionally silent instead of inserting `Tool output: expanded/collapsed` into the transcript; the changed card detail is its feedback. `/minimal-display` only reports status and is never required to activate the extension.
 
-Status: release candidate prepared for owner approval; not published to npm. Independent Standards and Spec reviews found no remaining release blockers. The runtime adapter accepts **Pi 0.85.0 only**. Unknown versions stay native and display a diagnostic. Compatibility results and limitations live in [validation](docs/validation.md).
+Status: rc.5 development; not published to npm. The runtime adapter accepts **Pi 0.85.0 only**. Unknown versions stay native and display a diagnostic. Compatibility results and limitations live in [validation](docs/validation.md).
 
 ## Try in an isolated profile
 
@@ -38,7 +38,6 @@ Create `extensions/pi-minimal-display/config.json` under Pi's actual agent direc
 ```json
 {
   "grouping": true,
-  "hideThinking": true,
   "default": "count_only",
   "tools": {
     "read": "count_only",
@@ -62,7 +61,8 @@ Create `extensions/pi-minimal-display/config.json` under Pi's actual agent direc
 - Tool overrides use exact names; defaults for other built-ins remain in effect. There is no MCP discovery or gateway-name guessing.
 - Ordinary tools default to count-only, including `readSeek_edit`, `readSeek_grep` and future tool names. Counts identify actual registered names, not renderer titles. Explicit `default` and `tools` values remain authoritative; existing configurations explicitly setting `default: "native"` are not overwritten. To keep the pre-rc.3 unknown-tool behavior, set that value explicitly.
 - `maxCommandChars` accepts integers 8–500, measured in Unicode code points; the preview also fits the terminal width. `outputLines` accepts integers 0–50. Neither changes actual arguments or results.
-- `hideThinking` suppresses the visual thinking block. Original message content and streaming flags are retained.
+- Thinking visibility belongs only to Pi's native `hideThinkingBlock` setting in its regular settings file. This plugin reads the native transcript but never adds a second thinking-visibility setting. Visible thinking is a transcript boundary, so it splits adjacent tool groups and reduces compact visual compression; for the densest display, consider disabling thinking in Pi's native config.
+- Older configs may still contain `hideThinking`; it is accepted only for migration and ignored. Remove it after moving the choice to Pi's native setting.
 
 Changes take effect after `/reload` or restart. `/minimal-display` shows status and the configuration path. Unknown keys, invalid types, malformed JSON, or unreadable configuration disable compact display for that runtime and report the file path.
 
@@ -70,9 +70,9 @@ Groups end at intervening assistant text/thinking, native tools, other transcrip
 
 ## Runtime patches and recovery
 
-This extension temporarily patches Pi's in-memory container rendering/mouse routing and assistant thinking presentation. It never edits installed Pi files and never registers replacement tools. All private host assumptions are kept in [presentation.ts](src/presentation.ts).
+This extension temporarily patches Pi's in-memory container rendering, mouse routing and native expansion-status routing. Thinking presentation remains entirely owned by Pi. It never edits installed Pi files and never registers replacement tools. All private host assumptions are kept in [presentation.ts](src/presentation.ts).
 
-Installation checks the exact version, required exports/descriptors, and fingerprints of the host methods it patches. Shutdown and reload dispose owned patches and restore existing thinking views; a runtime presentation failure disables the adapter and reports the fallback. Do not run it alongside `pi-tool-display`, `pi-tool-compact-display`, or `pi-compact-display`. Known tool-owner conflicts and prior modifications to the patched methods are rejected. Arbitrary third-party prototype patch combinations are not supported.
+Installation checks the exact version, required exports/descriptors, and fingerprints of the host methods it patches. Shutdown and reload dispose owned patches; a runtime presentation failure disables the adapter and reports the fallback. Do not run it alongside `pi-tool-display`, `pi-tool-compact-display`, or `pi-compact-display`. Known tool-owner conflicts and prior modifications to the patched methods are rejected. Arbitrary third-party prototype patch combinations are not supported.
 
 To recover, restart Pi without this extension. For a local package registered with `pi install`, remove that same source with `pi remove /absolute/path/to/pi-minimal-display`, then restart. The configuration file can be kept. Running `pi --no-extensions` provides a diagnostic session with all auto-discovered extensions disabled.
 

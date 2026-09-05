@@ -6,7 +6,6 @@ export const CERTIFIED_PI_VERSION = '0.85.0';
 export type Mode = 'native' | 'count_only' | 'lines';
 export interface Config {
   grouping: boolean;
-  hideThinking: boolean;
   default: Mode;
   tools: Record<string, Mode>;
   bash: { maxCommandChars: number; outputLines: number };
@@ -24,7 +23,7 @@ function mode(value: unknown): asserts value is Mode {
 export function loadConfig(agentDir: string): { config?: Config; diagnostic?: string } {
   const path = join(agentDir, 'extensions', 'pi-minimal-display', 'config.json');
   const defaults: Config = {
-    grouping: true, hideThinking: true, default: 'count_only',
+    grouping: true, default: 'count_only',
     tools: { read: 'count_only', grep: 'count_only', find: 'count_only', ls: 'count_only', bash: 'lines', edit: 'lines', write: 'lines', ask_user_question: 'native', plan_mode_question: 'native', plan_mode_complete: 'native' },
     bash: { maxCommandChars: 120, outputLines: 0 },
   };
@@ -34,9 +33,8 @@ export function loadConfig(agentDir: string): { config?: Config; diagnostic?: st
     for (const key of Object.keys(raw)) {
       if (!['grouping', 'hideThinking', 'default', 'tools', 'bash'].includes(key)) throw new Error(`unknown field ${key}`);
     }
-    for (const key of ['grouping', 'hideThinking']) {
-      if (key in raw && typeof raw[key] !== 'boolean') throw new Error(`${key} must be boolean`);
-    }
+    if ('grouping' in raw && typeof raw.grouping !== 'boolean') throw new Error('grouping must be boolean');
+    if ('hideThinking' in raw && typeof raw.hideThinking !== 'boolean') throw new Error('hideThinking must be boolean');
     if ('default' in raw) mode(raw.default);
     if ('tools' in raw) {
       for (const [name, value] of Object.entries(record(raw.tools, 'tools'))) {
@@ -57,6 +55,6 @@ export function loadConfig(agentDir: string): { config?: Config; diagnostic?: st
     if ((error as NodeJS.ErrnoException).code === 'ENOENT') return { config: defaults };
     return { diagnostic: `${path}: ${String(error)}; using native display` };
   }
-  const settings = raw as Partial<Config>;
+  const { hideThinking: _ignored, ...settings } = raw as Partial<Config> & { hideThinking?: boolean };
   return { config: { ...defaults, ...settings, tools: { ...defaults.tools, ...settings.tools }, bash: { ...defaults.bash, ...settings.bash } } };
 }
