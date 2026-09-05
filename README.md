@@ -1,6 +1,6 @@
 # Pi Minimal Display
 
-Compact, expandable tool activity for Pi. A user turn containing many calls becomes a summary such as:
+Compact, expandable tool activity for Pi. Consecutive tool calls become a summary such as:
 
 ```text
 ⚡ bash ×3 read ×4 edit ×1 — succeeded · ctrl+o to expand
@@ -59,7 +59,7 @@ Create `extensions/pi-minimal-display/config.json` under Pi's actual agent direc
 
 Changes take effect after `/reload` or restart. `/minimal-display` shows status and the configuration path. Unknown keys, invalid types, malformed JSON, or unreadable configuration disable compact display for that runtime and report the file path.
 
-Groups end at user messages or skill invocations, not assistant commentary. The session branch also identifies image-only user turns that have no visible user card. Native tools remain independent. Expanded groups keep native renderers and controls, and append retained arguments/text/details because some native renderers suppress successful output even when expanded. Images retain their native rendering. Output already truncated by Pi cannot be recovered, but retained truncation notices and full-output-file references remain available.
+Groups end at intervening assistant text/thinking, native tools, other transcript output, user messages or skill invocations. Hidden thinking still separates groups; empty tool-call-only assistant placeholders do not. Five calls, commentary, then three calls stay in that order as two groups, including when expanded. The session branch also identifies image-only user turns that have no visible user card. Expanded groups keep native renderers and controls, and append retained arguments/text/details because some native renderers suppress successful output even when expanded. Images retain their native rendering. Output already truncated by Pi cannot be recovered, but retained truncation notices and full-output-file references remain available.
 
 ## Runtime patches and recovery
 

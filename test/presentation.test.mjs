@@ -28,13 +28,11 @@ test('a turn groups mixed calls, native expansion retains details, disposal rest
     const first = tool('bash', 'first', 'FIRST RESULT');
     const second = tool('read', 'second', 'SECOND RESULT');
     transcript.addChild(first);
-    transcript.addChild(new Text('assistant commentary'));
     transcript.addChild(second);
     const originalChildren = [...transcript.children];
     const collapsed = transcript.render(80).join('\n');
     assert.match(collapsed, /bash ×1 read ×1/);
     assert.doesNotMatch(collapsed, /FIRST RESULT|SECOND RESULT|echo first/);
-    assert.match(collapsed, /assistant commentary/);
     assert.deepEqual(transcript.children, originalChildren);
     first.setExpanded(true);
     second.setExpanded(true);
@@ -63,6 +61,30 @@ test('preexisting presentation-only wrappers are rejected without changing their
   } finally { dispose?.(); Container.prototype.render = original; }
 });
 
+test('five calls, commentary, then three calls retain their relative positions', () => {
+  const dispose = installPresentation(config, Pi.VERSION, () => {});
+  try {
+    const transcript = new Container();
+    const calls = [];
+    for (const [prefix, count] of [['BEFORE', 5], ['AFTER', 3]]) {
+      if (prefix === 'AFTER') transcript.addChild(new AssistantMessageComponent({ role: 'assistant', content: [{ type: 'text', text: 'BETWEEN_COMMENTARY' }], stopReason: 'stop' }));
+      for (let index = 0; index < count; index++) {
+        transcript.addChild(new AssistantMessageComponent({ role: 'assistant', content: [{ type: 'toolCall', id: `${prefix}_${index}`, name: 'bash', arguments: {} }], stopReason: 'toolUse' }));
+        const call = tool('bash', `${prefix}_${index}`, `RESULT_${prefix}_${index}`);
+        calls.push(call);
+        transcript.addChild(call);
+      }
+    }
+    const source = [...transcript.children];
+    const collapsed = transcript.render(100).join('\n');
+    assert.match(collapsed, /bash ×5[\s\S]*BETWEEN_COMMENTARY[\s\S]*bash ×3/);
+    for (const call of calls) call.setExpanded(true);
+    const expanded = transcript.render(100).join('\n');
+    assert.match(expanded, /RESULT_BEFORE_4[\s\S]*BETWEEN_COMMENTARY[\s\S]*RESULT_AFTER_0/);
+    assert.deepEqual(transcript.children, source);
+  } finally { dispose(); }
+});
+
 test('image-only user messages in the session split groups even without a visible user card', () => {
   const session = Pi.SessionManager.inMemory(process.cwd());
   session.appendMessage({ role: 'user', content: [{ type: 'image', data: 'fixture', mimeType: 'image/png' }], timestamp: 1 });
@@ -77,6 +99,27 @@ test('image-only user messages in the session split groups even without a visibl
     const rendered = transcript.render(80).join('\n');
     assert.doesNotMatch(rendered, /bash ×2/);
     assert.equal((rendered.match(/bash ×1/g) ?? []).length, 2);
+  } finally { dispose(); }
+});
+
+test('hidden thinking, streamed narrative, native tools and host warnings stop grouping', () => {
+  const dispose = installPresentation(config, Pi.VERSION, () => {});
+  try {
+    const transcript = new Container();
+    const assistant = new AssistantMessageComponent();
+    transcript.children.push(tool('bash', 'before', 'BEFORE'), assistant, tool('bash', 'after', 'AFTER'));
+    assert.match(transcript.render(100).join('\n'), /bash ×2/);
+    assistant.updateContent({ role: 'assistant', content: [{ type: 'thinking', thinking: 'HIDDEN NARRATIVE' }], stopReason: 'stop' }, true);
+    let output = transcript.render(100).join('\n');
+    assert.doesNotMatch(output, /HIDDEN NARRATIVE/);
+    assert.equal((output.match(/bash ×1/g) ?? []).length, 2);
+    assistant.updateContent({ role: 'assistant', content: [{ type: 'text', text: 'STREAMED NARRATIVE' }], stopReason: 'stop' }, true);
+    assert.match(transcript.render(100).join('\n'), /bash ×1[\s\S]*STREAMED NARRATIVE[\s\S]*bash ×1/);
+    transcript.children[1] = tool('custom', 'native', 'NATIVE RESULT');
+    assert.match(transcript.render(100).join('\n'), /bash ×1[\s\S]*NATIVE RESULT[\s\S]*bash ×1/);
+    transcript.children[1] = new AssistantMessageComponent({ role: 'assistant', content: [], stopReason: 'length' });
+    output = transcript.render(100).join('\n');
+    assert.match(output, /bash ×1[\s\S]*Response was truncated[\s\S]*bash ×1/);
   } finally { dispose(); }
 });
 
@@ -166,10 +209,10 @@ test('direct transcript changes and user/skill boundaries preserve native cards 
     const pending = tool('bash', 'pending', 'partial');
     pending.updateResult({ content: [{ type: 'text', text: 'partial' }], isError: false }, true);
     const unknown = tool('custom', 'native', 'NATIVE RESULT');
-    transcript.children.push(first, unknown, pending);
+    transcript.children.push(first, pending, unknown);
     assert.match(transcript.render(80).join('\n'), /bash ×2.*failed: bash; 1 pending/);
     assert.match(transcript.render(80).join('\n'), /NATIVE RESULT/);
-    transcript.children.splice(2, 0, new UserMessageComponent('next'));
+    transcript.children.splice(1, 0, new UserMessageComponent('next'));
     assert.equal((transcript.render(80).join('\n').match(/bash ×1/g) ?? []).length, 2);
     transcript.children.push(new SkillInvocationMessageComponent({ name: 'test', location: '/test', content: 'skill', userMessage: undefined }), tool('read', 'read-only', 'hidden'));
     assert.match(transcript.render(80).join('\n'), /read ×1/);

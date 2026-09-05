@@ -108,6 +108,19 @@ try {
   mode.rebuildChatFromMessages();
   assert.match(render(), /bash ×1 read ×1/);
 
+  const between = assistant([text('BETWEEN_HOST_CALLS'), call('after-commentary', 'bash', { command: 'printf AFTER_HOST_RESULT' })]);
+  manager.appendMessage(between);
+  await mode.handleEvent({ type: 'message_start', message: between });
+  await mode.handleEvent({ type: 'message_update', message: between });
+  await mode.handleEvent({ type: 'message_end', message: between });
+  const afterCommentary = result('after-commentary', 'bash', [text('AFTER_HOST_RESULT')]);
+  manager.appendMessage(afterCommentary);
+  await mode.handleEvent({ type: 'tool_execution_end', toolCallId: 'after-commentary', toolName: 'bash', result: afterCommentary, isError: false });
+  assert.match(render(), /bash ×1 read ×1[\s\S]*BETWEEN_HOST_CALLS[\s\S]*bash ×1/);
+  mode.defaultEditor.handleInput('\x0f');
+  assert.match(render(), /REPLAY_OUTPUT[\s\S]*BETWEEN_HOST_CALLS[\s\S]*AFTER_HOST_RESULT/);
+  mode.defaultEditor.handleInput('\x0f');
+
   mode.subscribeToAgent();
   await runtime.session.followUp('Live next turn');
   assert.match(mode.pendingMessagesContainer.render(100).join('\n'), /Follow-up: Live next turn/);

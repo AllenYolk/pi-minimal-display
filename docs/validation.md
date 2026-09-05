@@ -10,6 +10,8 @@ All 24 checks pass. Against `a65066a`, five alternating before/after trials of t
 
 ## Standards
 
+Subsequent owner feedback in [issue #10](https://github.com/AllenYolk/pi-minimal-display/issues/10) corrects the original whole-turn grouping requirement: tools must not move across narrative/native output. The ordering fix has 26 passing checks, including real host event construction and expanded/collapsed relative-order assertions. Five alternating trials against `a158d7d` retain identical native output; corrected compact output intentionally changes order. Public recorded-session medians: collapsed 0.515 → 0.730 ms (1,996 → 2,135 lines), expanded 4.942 → 5.258 ms (24,802 lines). More headers are the cost of preserving order; no speedup is claimed. The installed trial snapshot and Retained data appendix are unchanged. This follow-up is not covered by the historical baseline reviews below.
+
 No remaining release blockers or actionable heuristic smells. The independent reviewer reran all 24 checks and the public recorded-session benchmark. Prior gaps in real-host integration and recorded-transcript evidence are closed. The adapter's private host access remains confined to the explicitly approved presentation boundary.
 
 ## Spec

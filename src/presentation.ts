@@ -33,9 +33,9 @@ export function installPresentation(config: Config, version: unknown, report: (m
     report(`Pi ${String(version)} is not certified (expected ${CERTIFIED_PI_VERSION}); using native display`);
     return;
   }
-  const { AssistantMessageComponent, SkillInvocationMessageComponent, ToolExecutionComponent, UserMessageComponent, keyText } = host.pi;
+  const { AssistantMessageComponent, ToolExecutionComponent, keyText } = host.pi;
   const { Container, Text, truncateToWidth } = host.tui;
-  if ([AssistantMessageComponent, SkillInvocationMessageComponent, ToolExecutionComponent, UserMessageComponent, Container, Text, truncateToWidth, keyText].some(value => typeof value !== 'function')) {
+  if ([AssistantMessageComponent, ToolExecutionComponent, Container, Text, truncateToWidth, keyText].some(value => typeof value !== 'function')) {
     report('Pi presentation exports are incompatible; using native display');
     return;
   }
@@ -180,8 +180,15 @@ export function installPresentation(config: Config, version: unknown, report: (m
       let members: ToolExecutionComponent[] | undefined;
       let groupTurn: string | undefined;
       for (const child of source) {
-        if (child instanceof UserMessageComponent || child instanceof SkillInvocationMessageComponent) members = undefined;
         if (!(child instanceof ToolExecutionComponent) || modeFor(child, active) === 'native') {
+          const message = child instanceof AssistantMessageComponent
+            ? (child as unknown as { lastMessage?: Parameters<AssistantMessageComponent['updateContent']>[0] }).lastMessage
+            : undefined;
+          // Tool-only assistant placeholders are empty; narrative is a boundary even when hidden.
+          const emptyAssistant = child instanceof AssistantMessageComponent
+            && (!message || !['length', 'error', 'aborted'].includes(message.stopReason))
+            && !message?.content.some(block => (block.type === 'text' && block.text.trim()) || (block.type === 'thinking' && block.thinking.trim()));
+          if (!emptyAssistant) members = undefined;
           projected.push(child);
         } else {
           const turn = turnIds.get(stateOf(child).toolCallId) ?? currentTurn;

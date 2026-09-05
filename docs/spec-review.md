@@ -2,6 +2,8 @@
 
 Status: Review direction approved by the owner on 2026-09-05. The authoritative implementation contract is the GitHub spec issue.
 
+Owner trial feedback supersedes whole-turn grouping in [issue #10](https://github.com/AllenYolk/pi-minimal-display/issues/10): only consecutive managed calls form a group; intervening text/thinking, native tools and other output keep their original positions. Empty assistant tool-call placeholders may be crossed. The Retained data appendix remains under UX discussion, not removed by the ordering correction.
+
 ## Starting point
 
 This project follows the Pi Minimal Display handoff prepared on 2026-09-05. The GitHub repository is AllenYolk/pi-minimal-display. The owner subsequently selected MIT; the candidate package is named @allenyolk/pi-minimal-display. Package publication remains a separate owner decision.

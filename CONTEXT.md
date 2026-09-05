@@ -8,7 +8,7 @@ Compact, inspectable presentation of Pi tool activity while preserving execution
 
 **Tool call**: One invocation with an identity, arguments, and eventual result. A display group never merges executions.
 
-**Display group**: A visual summary of the opted-in tool calls in a user turn. Every retained member detail remains accessible through expansion.
+**Display group**: A visual summary of consecutive opted-in tool calls within a user turn, without intervening narrative or native output. One user turn can contain several display groups; each retains its position in the conversation.
 
 **Native mode**: Pi's existing presentation, including any registered tool renderer. The extension does not compact this tool.
 
