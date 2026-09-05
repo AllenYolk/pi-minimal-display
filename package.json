@@ -1,0 +1,31 @@
+{
+  "name": "@allenyolk/pi-minimal-display",
+  "version": "0.1.0-rc.1",
+  "private": true,
+  "description": "Compact, expandable Pi tool cards with reversible presentation patches.",
+  "type": "module",
+  "license": "MIT",
+  "repository": { "type": "git", "url": "git+https://github.com/AllenYolk/pi-minimal-display.git" },
+  "files": ["dist", "README.md", "LICENSE"],
+  "exports": "./dist/index.js",
+  "pi": { "extensions": ["./dist/index.js"] },
+  "keywords": ["pi-package", "pi", "tool-rendering"],
+  "engines": { "node": ">=22.19.0" },
+  "scripts": {
+    "build": "tsc",
+    "typecheck": "tsc --noEmit",
+    "test": "npm run build && node --test test/*.test.mjs",
+    "check": "npm run typecheck && npm test"
+  },
+  "peerDependencies": {
+    "@earendil-works/pi-coding-agent": "0.85.0",
+    "@earendil-works/pi-tui": "0.85.0"
+  },
+  "devDependencies": {
+    "@earendil-works/pi-coding-agent": "0.85.0",
+    "@earendil-works/pi-server": "0.85.0",
+    "@earendil-works/pi-tui": "0.85.0",
+    "@types/node": "24.10.1",
+    "typescript": "5.9.3"
+  }
+}
