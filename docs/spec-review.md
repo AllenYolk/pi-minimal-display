@@ -2,7 +2,7 @@
 
 Status: Review direction approved by the owner on 2026-09-05. The authoritative implementation contract is the GitHub spec issue.
 
-Owner trial feedback supersedes whole-turn grouping in [issue #10](https://github.com/AllenYolk/pi-minimal-display/issues/10): only consecutive managed calls form a group; intervening text/thinking, native tools and other output keep their original positions. Empty assistant tool-call placeholders may be crossed. The Retained data appendix remains under UX discussion, not removed by the ordering correction.
+Owner trial feedback supersedes whole-turn grouping in [issue #10](https://github.com/AllenYolk/pi-minimal-display/issues/10): only consecutive managed calls form a group; intervening text/thinking, native tools and other output keep their original positions. Empty assistant tool-call placeholders may be crossed. The owner subsequently approved [issue #12](https://github.com/AllenYolk/pi-minimal-display/issues/12): remove the Retained data appendix and use native expansion only, preserving raw session/model data without adding a second raw-data UI.
 
 ## Starting point
 
@@ -20,7 +20,7 @@ The previous handoff is input to this review, not proof that its architecture or
 ## Proposed corrections to the handoff
 
 1. **Group membership must be unambiguous.** Proposed behavior: with grouping enabled, both `count_only` and `lines` tools contribute to the same turn header. `native` tools remain outside it. With grouping disabled, `count_only` produces an individually expandable summary; `lines` produces a compact call preview. No hidden tool becomes impossible to inspect.
-2. **Expanded content means all retained content.** Preserve the full command arguments and all tool-result content blocks retained by Pi, including images and structured diff details. A host-truncated result must retain its truncation notice and full-output-file reference; the plugin cannot promise to recover bytes the host never retained. Prefer native renderers on expansion.
+2. **Expanded content follows native presentation.** Per issue #12, expanded tool output must match Pi's native renderer rather than duplicate raw data in an appendix. Original arguments, result blocks and structured details remain unchanged in session/model data, including when native renderers omit successful text or metadata. Images and controls stay native; output the host discarded cannot be recovered.
 3. **Display summaries stay out of message data.** Do not inject summaries into assistant messages and then remove them by matching an emoji prefix. Session serialization, model context, tool definitions, and execution results must remain unchanged.
 4. **Transcript structure is the authority.** Pi 0.85.0 inserts some entries using `chatContainer.children.splice(...)`, bypassing `addChild`. A separate mirror based only on container methods is incomplete. The first technical investigation must establish a reliable presentation seam for live updates, replay, queued input, skill invocation, fork, and reload.
 5. **Supported minor and tested release differ.** Initially certify the exact installed Pi release (currently 0.85.0). A broad `0.85.x` peer range alone cannot establish compatibility with future patch releases. Record the tested version set and structural assumptions; default unknown hosts to native display.

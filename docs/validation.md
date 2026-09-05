@@ -1,6 +1,12 @@
 # Validation
 
-Candidate: 0.1.0-rc.1. Report date: 2026-09-05. The baseline candidate review covers `3b482e1...bc3c8b2`, with runtime source from `065216d`. Both review axes and the four-job CI matrix passed for that baseline. Publication and daily-profile activation require owner approval.
+Current trial candidate: 0.1.0-rc.2. Report date: 2026-09-05. The historical rc.1 review below covers `3b482e1...bc3c8b2`, with runtime source from `065216d`. Both review axes and the four-job CI matrix passed for that baseline. The owner has authorized the combined ordered/native-expansion trial update in issue #12, not npm publication.
+
+## Native-expansion trial update
+
+The rc.2 implementation includes ordering fix #10 and removes the raw appendix plus its serialized-layout cache per #12. Ctrl+O uses native renderers without changing original arguments/results/details. The write-renderer regression compares complete expanded output against native output, not merely absence of a heading; session/model and native image/control checks remain.
+
+27 local checks pass, including real host ordering and CLI/tarball loading. The public 914-message/391-call fixture renders 2,135 collapsed lines and 14,889 expanded lines; the earlier ordered appendix version rendered 24,802 expanded lines. Local native → plugin medians: collapsed 2.726 → 0.686 ms; expanded 3.759 → 3.497 ms. These are workload-specific measurements, not a general speed guarantee. Exact reviewed/deployed commit, CI and uninstall evidence are tracked in issue #12.
 
 ## Ponytail follow-up
 

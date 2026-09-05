@@ -13,7 +13,7 @@ type ToolState = {
   args: Record<string, unknown>;
   expanded: boolean;
   isPartial: boolean;
-  result?: { isError: boolean; content: Array<{ type: string; text?: string }>; details?: unknown };
+  result?: { isError: boolean; content: Array<{ type: string; text?: string }> };
   ui: { requestRender(): void };
 };
 const stateOf = (tool: ToolExecutionComponent) => tool as unknown as ToolState;
@@ -66,8 +66,6 @@ export function installPresentation(config: Config, version: unknown, report: (m
   let session = host.session;
   const thinkingComponents = new Set<WeakRef<AssistantMessageComponent>>();
   const seenThinking = new WeakSet<AssistantMessageComponent>();
-  // Expanded-text layout dominated the measured rendering cost; invalidate by serialized content.
-  let retainedViews = new WeakMap<ToolExecutionComponent, { source: string; component: Tui.Text }>();
   const modeFor = (tool: ToolExecutionComponent, settings: Config) => {
     const name = stateOf(tool).toolName;
     return Object.hasOwn(settings.tools, name) ? settings.tools[name]! : settings.default;
@@ -98,19 +96,10 @@ export function installPresentation(config: Config, version: unknown, report: (m
     return {
       render(width) {
         if (!active || members.some(tool => stateOf(tool).expanded)) {
-          nativeView.children = active ? members.flatMap(tool => {
-            if (!stateOf(tool).expanded) tool.setExpanded(true);
-            const state = stateOf(tool);
-            // Native renderers may hide successful text even when expanded (notably write).
-            const retained = { arguments: state.args, text: state.result?.content.filter(block => block.type === 'text').map(block => block.text), details: state.result?.details };
-            const source = `Retained data\n${JSON.stringify(retained, null, 2)}`;
-            let cached = retainedViews.get(tool);
-            if (!cached || cached.source !== source) {
-              cached = { source, component: new Text(source, 0, 0) };
-              retainedViews.set(tool, cached);
-            }
-            return [tool, cached.component];
-          }) : members;
+          if (active) {
+            for (const tool of members) if (!stateOf(tool).expanded) tool.setExpanded(true);
+          }
+          nativeView.children = members;
           return originalRender.call(nativeView, width);
         }
         const counts = new Map<string, number>();
@@ -216,7 +205,6 @@ export function installPresentation(config: Config, version: unknown, report: (m
     active = undefined;
     session = undefined;
     report = () => {};
-    retainedViews = new WeakMap();
     if (proto.render === render) Object.defineProperty(proto, 'render', descriptor);
     if (proto.handleMouse === handleMouse) Object.defineProperty(proto, 'handleMouse', mouseDescriptor);
     if (assistantProto.updateContent === updateContent) Object.defineProperty(assistantProto, 'updateContent', thinkingDescriptor);

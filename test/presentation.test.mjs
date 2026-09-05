@@ -132,7 +132,24 @@ test('existing thinking is hidden on the next render, then restored on disposal'
   assert.match(component.render(80).join('\n'), /EARLIER THINKING/);
 });
 
-test('new members of an expanded group and native-hidden result blocks remain inspectable', () => {
+test('expanded tools match native output without duplicating raw data or changing results', () => {
+  const transcript = new Container();
+  const write = new ToolExecutionComponent('write', 'write', { path: 'fixture.txt', content: 'WRITTEN CONTENT' }, {}, Pi.createWriteToolDefinition(process.cwd()), ui, process.cwd());
+  const result = { content: [{ type: 'text', text: 'WRITE SUCCESS TEXT' }, { type: 'text', text: 'SECOND TEXT BLOCK' }], details: { marker: 'RETAINED DETAILS' }, isError: false };
+  write.updateResult(result);
+  write.setExpanded(true);
+  transcript.addChild(write);
+  const native = transcript.render(80);
+  const before = JSON.stringify(result);
+  const dispose = installPresentation(config, Pi.VERSION, () => {});
+  try {
+    assert.deepEqual(transcript.render(80), native);
+    assert.doesNotMatch(transcript.render(80).join('\n'), /Retained data/);
+    assert.equal(JSON.stringify(result), before);
+  } finally { dispose(); }
+});
+
+test('new members of an expanded group use their expanded native renderer', () => {
   const dispose = installPresentation(config, '0.85.0', () => {});
   try {
     const transcript = new Container();
@@ -141,16 +158,8 @@ test('new members of an expanded group and native-hidden result blocks remain in
     transcript.addChild(first);
     const read = tool('read', 'later', 'LATER READ', Pi.createReadToolDefinition(process.cwd()));
     transcript.addChild(read);
-    const write = tool('write', 'write', 'WRITE SUCCESS TEXT', Pi.createWriteToolDefinition(process.cwd()));
-    write.updateResult({ content: [{ type: 'text', text: 'WRITE SUCCESS TEXT' }, { type: 'text', text: 'SECOND TEXT BLOCK' }], details: { marker: 'RETAINED DETAILS' }, isError: false });
-    transcript.addChild(write);
     const expanded = transcript.render(80).join('\n');
     assert.match(expanded, /LATER READ/);
-    assert.match(expanded, /WRITE SUCCESS TEXT/);
-    assert.match(expanded, /SECOND TEXT BLOCK/);
-    assert.match(expanded, /RETAINED DETAILS/);
-    write.result.content[1].text = 'UPDATED TEXT BLOCK';
-    assert.match(transcript.render(80).join('\n'), /UPDATED TEXT BLOCK/);
   } finally { dispose(); }
 });
 

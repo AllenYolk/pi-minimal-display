@@ -6,7 +6,7 @@ import * as Pi from '@earendil-works/pi-coding-agent';
 import { loadConfig } from '../../dist/config.js';
 import { installPresentation } from '../../dist/presentation.js';
 
-// Pi can carry its own Tui dependency; dispose the same classes InteractiveMode uses.
+// Pi can carry its own Tui dependency; use the same classes InteractiveMode uses.
 const requirePi = createRequire(import.meta.resolve('@earendil-works/pi-coding-agent'));
 const Tui = await import(pathToFileURL(requirePi.resolve('@earendil-works/pi-tui')).href);
 const profile = process.env.PI_CODING_AGENT_DIR;
@@ -79,6 +79,7 @@ try {
   assert.deepEqual(images(collapsed), []);
   mode.defaultEditor.handleInput('\x0f');
   const expanded = render();
+  assert.doesNotMatch(expanded, /Retained data/);
   assert.match(expanded, /REPLAY_OUTPUT/);
   assert.match(expanded, /RETAINED IMAGE/);
   assert.deepEqual(images(expanded), nativeImages, 'expanded rendering must preserve the native image protocol payload');

@@ -36,6 +36,7 @@ export default function probe(pi: ExtensionAPI) {
         assert.doesNotMatch(collapsed, /probe-output/);
         for (const call of calls) call.setExpanded(true);
         assert.match(transcript.render(80).join('\n'), /probe-output/);
+        assert.doesNotMatch(transcript.render(80).join('\n'), /Retained data/);
         const message = { role: 'assistant', content: [{ type: 'thinking', thinking: 'hidden thinking' }, { type: 'text', text: 'visible text' }], stopReason: 'stop' } as const;
         const component = new AssistantMessageComponent(message as never);
         if (run.round % 2 === 0) assert.doesNotMatch(component.render(80).join('\n'), /hidden thinking/);
