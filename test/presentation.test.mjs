@@ -20,8 +20,8 @@ function tool(name, id, text, definition = bash) {
 
 test('a turn groups mixed calls, native expansion retains details, disposal restores the host', () => {
   const before = Container.prototype.render;
-  const patch = installPresentation(config, '0.85.0', () => {});
-  assert.equal(patch.enabled, true);
+  const dispose = installPresentation(config, '0.85.0', () => {});
+  assert.equal(typeof dispose, 'function');
   try {
     const transcript = new Container();
     transcript.addChild(new UserMessageComponent('hello'));
@@ -41,11 +41,11 @@ test('a turn groups mixed calls, native expansion retains details, disposal rest
     const expanded = transcript.render(80).join('\n');
     assert.match(expanded, /FIRST RESULT/);
     assert.match(expanded, /SECOND RESULT/);
-    patch.dispose();
+    dispose();
     first.setExpanded(false);
     second.setExpanded(false);
     assert.match(transcript.render(80).join('\n'), /echo first/);
-  } finally { patch.dispose(); }
+  } finally { dispose(); }
   assert.equal(Container.prototype.render, before);
 });
 
@@ -53,14 +53,14 @@ test('preexisting presentation-only wrappers are rejected without changing their
   const original = Container.prototype.render;
   function wrapper(width) { return original.call(this, width); }
   Container.prototype.render = wrapper;
-  let patch;
+  let dispose;
   try {
     const messages = [];
-    patch = installPresentation(config, '0.85.0', value => messages.push(value));
-    assert.equal(patch.enabled, false);
+    dispose = installPresentation(config, '0.85.0', value => messages.push(value));
+    assert.equal(dispose, undefined);
     assert.equal(Container.prototype.render, wrapper);
     assert.match(messages[0], /modified|conflict|certified/i);
-  } finally { patch?.dispose(); Container.prototype.render = original; }
+  } finally { dispose?.(); Container.prototype.render = original; }
 });
 
 test('image-only user messages in the session split groups even without a visible user card', () => {
@@ -69,7 +69,7 @@ test('image-only user messages in the session split groups even without a visibl
   session.appendMessage({ role: 'assistant', content: [{ type: 'toolCall', id: 'a', name: 'bash', arguments: {} }], timestamp: 2 });
   session.appendMessage({ role: 'user', content: [{ type: 'image', data: 'fixture', mimeType: 'image/png' }], timestamp: 3 });
   session.appendMessage({ role: 'assistant', content: [{ type: 'toolCall', id: 'b', name: 'bash', arguments: {} }], timestamp: 4 });
-  const patch = install(config, '0.85.0', () => {}, { pi: Pi, tui: Tui, session });
+  const dispose = install(config, '0.85.0', () => {}, { pi: Pi, tui: Tui, session });
   try {
     const transcript = new Container();
     transcript.addChild(tool('bash', 'a', 'A'));
@@ -77,20 +77,20 @@ test('image-only user messages in the session split groups even without a visibl
     const rendered = transcript.render(80).join('\n');
     assert.doesNotMatch(rendered, /bash ×2/);
     assert.equal((rendered.match(/bash ×1/g) ?? []).length, 2);
-  } finally { patch.dispose(); }
+  } finally { dispose(); }
 });
 
 test('existing thinking is hidden on the next render, then restored on disposal', () => {
   const message = { role: 'assistant', content: [{ type: 'thinking', thinking: 'EARLIER THINKING' }], stopReason: 'stop' };
   const component = new AssistantMessageComponent(message);
-  const patch = installPresentation(config, '0.85.0', () => {});
+  const dispose = installPresentation(config, '0.85.0', () => {});
   try { assert.doesNotMatch(component.render(80).join('\n'), /EARLIER THINKING/); }
-  finally { patch.dispose(); }
+  finally { dispose(); }
   assert.match(component.render(80).join('\n'), /EARLIER THINKING/);
 });
 
 test('new members of an expanded group and native-hidden result blocks remain inspectable', () => {
-  const patch = installPresentation(config, '0.85.0', () => {});
+  const dispose = installPresentation(config, '0.85.0', () => {});
   try {
     const transcript = new Container();
     const first = tool('bash', 'first', 'FIRST');
@@ -108,12 +108,12 @@ test('new members of an expanded group and native-hidden result blocks remain in
     assert.match(expanded, /RETAINED DETAILS/);
     write.result.content[1].text = 'UPDATED TEXT BLOCK';
     assert.match(transcript.render(80).join('\n'), /UPDATED TEXT BLOCK/);
-  } finally { patch.dispose(); }
+  } finally { dispose(); }
 });
 
 test('a rendering-adapter fault restores native content and reports only once', () => {
   const messages = [];
-  const patch = install(config, '0.85.0', value => messages.push(value), { pi: { ...Pi, keyText() { throw new Error('changed key helper'); } }, tui: Tui });
+  const dispose = install(config, '0.85.0', value => messages.push(value), { pi: { ...Pi, keyText() { throw new Error('changed key helper'); } }, tui: Tui });
   try {
     const transcript = new Container();
     transcript.addChild(tool('bash', 'safe', 'FALLBACK DETAIL'));
@@ -121,36 +121,36 @@ test('a rendering-adapter fault restores native content and reports only once', 
     assert.match(transcript.render(80).join('\n'), /FALLBACK DETAIL/);
     assert.equal(messages.length, 1);
     assert.match(messages[0], /native/);
-  } finally { patch.dispose(); }
+  } finally { dispose(); }
 });
 
 test('a changed host shape is rejected before patching', () => {
   const before = Container.prototype.render;
   const messages = [];
-  const patch = install(config, '0.85.0', value => messages.push(value), { pi: { ...Pi, ToolExecutionComponent: undefined }, tui: Tui });
-  assert.equal(patch.enabled, false);
+  const dispose = install(config, '0.85.0', value => messages.push(value), { pi: { ...Pi, ToolExecutionComponent: undefined }, tui: Tui });
+  assert.equal(dispose, undefined);
   assert.equal(Container.prototype.render, before);
   assert.equal(messages.length, 1);
 });
 
 test('session projection faults also fall back to native rendering', () => {
   const messages = [];
-  const patch = install(config, Pi.VERSION, message => messages.push(message), { pi: Pi, tui: Tui, session: { getBranch() { throw new Error('session unavailable'); } } });
+  const dispose = install(config, Pi.VERSION, message => messages.push(message), { pi: Pi, tui: Tui, session: { getBranch() { throw new Error('session unavailable'); } } });
   try {
     const transcript = new Container();
     transcript.addChild(tool('bash', 'safe', 'NATIVE DETAIL'));
     assert.match(transcript.render(80).join('\n'), /NATIVE DETAIL/);
     assert.equal(messages.length, 1);
-  } finally { patch.dispose(); }
+  } finally { dispose(); }
 });
 
 test('disposed mouse wrappers do not render the transcript again', () => {
-  const patch = installPresentation(config, Pi.VERSION, () => {});
+  const dispose = installPresentation(config, Pi.VERSION, () => {});
   const staleMouse = Container.prototype.handleMouse;
   const transcript = new Container();
   transcript.addChild(tool('bash', 'mouse', 'DETAIL'));
   transcript.render(80);
-  patch.dispose();
+  dispose();
   transcript.render = () => { throw new Error('unexpected render'); };
   const call = transcript.children[0];
   call.render = () => { throw new Error('unexpected tool render'); };
@@ -158,7 +158,7 @@ test('disposed mouse wrappers do not render the transcript again', () => {
 });
 
 test('direct transcript changes and user/skill boundaries preserve native cards and failures', () => {
-  const patch = installPresentation(config, '0.85.0', () => {});
+  const dispose = installPresentation(config, '0.85.0', () => {});
   try {
     const transcript = new Container();
     const first = tool('bash', 'failed', 'failure detail');
@@ -173,45 +173,45 @@ test('direct transcript changes and user/skill boundaries preserve native cards 
     assert.equal((transcript.render(80).join('\n').match(/bash ×1/g) ?? []).length, 2);
     transcript.children.push(new SkillInvocationMessageComponent({ name: 'test', location: '/test', content: 'skill', userMessage: undefined }), tool('read', 'read-only', 'hidden'));
     assert.match(transcript.render(80).join('\n'), /read ×1/);
-  } finally { patch.dispose(); }
+  } finally { dispose(); }
 });
 
 test('unsupported hosts stay native and old disposal preserves a later owner', () => {
   const original = Container.prototype.render;
   const messages = [];
   for (const version of ['0.85.1', '0.86.0', 'garbage', undefined]) {
-    assert.equal(installPresentation(config, version, message => messages.push(message)).enabled, false);
+    assert.equal(installPresentation(config, version, message => messages.push(message)), undefined);
     assert.equal(Container.prototype.render, original);
   }
   assert.equal(messages.length, 4);
   const first = installPresentation(config, '0.85.0', () => {});
-  assert.equal(installPresentation(config, '0.85.0', () => {}).enabled, false);
-  first.dispose();
+  assert.equal(installPresentation(config, '0.85.0', () => {}), undefined);
+  first();
   const second = installPresentation(config, '0.85.0', () => {});
   const current = Container.prototype.render;
-  first.dispose();
+  first();
   assert.equal(Container.prototype.render, current);
-  second.dispose();
+  second();
   assert.equal(Container.prototype.render, original);
 });
 
 test('third-party wrapping remains intact and disposed closures become native', () => {
   const original = Container.prototype.render;
-  const patch = installPresentation(config, '0.85.0', () => {});
+  const dispose = installPresentation(config, '0.85.0', () => {});
   const installed = Container.prototype.render;
   function thirdParty(width) { return installed.call(this, width); }
   Container.prototype.render = thirdParty;
   try {
-    patch.dispose();
+    dispose();
     assert.equal(Container.prototype.render, thirdParty);
     const transcript = new Container();
     transcript.addChild(tool('bash', 'visible', 'NATIVE'));
     assert.match(transcript.render(80).join('\n'), /NATIVE/);
-  } finally { Container.prototype.render = original; patch.dispose(); }
+  } finally { Container.prototype.render = original; dispose(); }
 });
 
 test('ungrouped lines mode previews only a short display command, expansion preserves full arguments', () => {
-  const patch = installPresentation({ ...config, grouping: false }, '0.85.0', () => {});
+  const dispose = installPresentation({ ...config, grouping: false }, '0.85.0', () => {});
   try {
     const command = '# check\nprintf "' + '中😀'.repeat(80) + '"\necho END_OF_COMMAND';
     const first = new ToolExecutionComponent('bash', 'long', { command }, {}, bash, ui, process.cwd());
@@ -227,11 +227,11 @@ test('ungrouped lines mode previews only a short display command, expansion pres
     const expanded = transcript.render(80).join('\n');
     assert.match(expanded, /END_OF_COMMAND/);
     assert.match(expanded, /OUTPUT_ONLY_ON_EXPAND/);
-  } finally { patch.dispose(); }
+  } finally { dispose(); }
 });
 
 test('click expansion uses the projected group layout even after resizing', () => {
-  const patch = installPresentation(config, '0.85.0', () => {});
+  const dispose = installPresentation(config, '0.85.0', () => {});
   try {
     const transcript = new Container();
     const first = tool('bash', 'one', 'ONE');
@@ -244,14 +244,14 @@ test('click expansion uses the projected group layout even after resizing', () =
     assert.equal(first.expanded, true);
     assert.equal(second.expanded, true);
     assert.match(transcript.render(40).join('\n'), /ONE/);
-  } finally { patch.dispose(); }
+  } finally { dispose(); }
 });
 
 test('thinking visibility and streaming survive disable and repeated installation', () => {
   const message = { role: 'assistant', content: [{ type: 'thinking', thinking: 'PRIVATE THOUGHT' }, { type: 'text', text: 'PUBLIC TEXT' }], stopReason: 'stop' };
   const serialized = JSON.stringify(message);
   for (let index = 0; index < 10; index++) {
-    const patch = installPresentation(config, '0.85.0', () => {});
+    const dispose = installPresentation(config, '0.85.0', () => {});
     try {
       const component = new AssistantMessageComponent(message);
       component.updateContent(message, true);
@@ -259,9 +259,9 @@ test('thinking visibility and streaming survive disable and repeated installatio
       assert.equal(component.lastMessage, message);
       assert.doesNotMatch(component.render(80).join('\n'), /PRIVATE THOUGHT|Thinking/);
       assert.match(component.render(80).join('\n'), /PUBLIC TEXT/);
-      patch.dispose();
+      dispose();
       assert.match(component.render(80).join('\n'), /PRIVATE THOUGHT/);
-    } finally { patch.dispose(); }
+    } finally { dispose(); }
   }
   assert.equal(JSON.stringify(message), serialized);
 });
@@ -269,7 +269,7 @@ test('thinking visibility and streaming survive disable and repeated installatio
 test('expanded native controls receive their original mouse events', () => {
   let clicks = 0;
   const definition = { ...bash, renderCall: () => new Text('native call', 0, 0), renderResult: () => new MouseRegion(new Text('NATIVE BUTTON', 0, 0), () => { clicks++; return { handled: true }; }) };
-  const patch = installPresentation(config, '0.85.0', () => {});
+  const dispose = installPresentation(config, '0.85.0', () => {});
   try {
     const transcript = new Container();
     const call = tool('bash', 'button', '', definition);
@@ -281,5 +281,5 @@ test('expanded native controls receive their original mouse events', () => {
     transcript.handleMouse({ type: 'click', button: 'left', x: 2, y, screenX: 2, screenY: y, width: 80, height: lines.length });
     assert.equal(clicks, 1);
     assert.equal(call.expanded, true);
-  } finally { patch.dispose(); }
+  } finally { dispose(); }
 });

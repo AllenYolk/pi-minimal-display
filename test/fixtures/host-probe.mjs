@@ -6,7 +6,7 @@ import * as Pi from '@earendil-works/pi-coding-agent';
 import { loadConfig } from '../../dist/config.js';
 import { installPresentation } from '../../dist/presentation.js';
 
-// Pi can carry its own Tui dependency; patch the same classes InteractiveMode uses.
+// Pi can carry its own Tui dependency; dispose the same classes InteractiveMode uses.
 const requirePi = createRequire(import.meta.resolve('@earendil-works/pi-coding-agent'));
 const Tui = await import(pathToFileURL(requirePi.resolve('@earendil-works/pi-tui')).href);
 const profile = process.env.PI_CODING_AGENT_DIR;
@@ -58,7 +58,7 @@ const render = () => mode.chatContainer.render(100).join('\n');
 const images = output => output.match(/\x1b\]1337;File=[^\x07]*\x07/g) ?? [];
 const snapshot = () => JSON.stringify({ entries: manager.getEntries(), context: manager.buildSessionContext(), messages: runtime.session.messages });
 const diagnostics = [];
-let patch;
+let dispose;
 try {
   mode.renderSessionEntries(manager.buildContextEntries(), { populateHistory: true });
   assert.ok(mode.chatContainer.children.some(child => child instanceof Pi.ToolExecutionComponent));
@@ -70,8 +70,8 @@ try {
   assert.match(native, /REPLAY THINKING/);
   mode.defaultEditor.handleInput('\x0f');
   const before = snapshot();
-  patch = installPresentation(loadConfig(profile).config, Pi.VERSION, message => diagnostics.push(message), { pi: Pi, tui: Tui, session: manager });
-  assert.equal(patch.enabled, true, diagnostics.join('\n'));
+  dispose = installPresentation(loadConfig(profile).config, Pi.VERSION, message => diagnostics.push(message), { pi: Pi, tui: Tui, session: manager });
+  assert.equal(typeof dispose, 'function', diagnostics.join('\n'));
   const collapsed = render();
   assert.match(collapsed, /bash ×1 read ×1/);
   assert.equal((collapsed.match(/bash ×1/g) ?? []).length, 2, 'image-only user arrival separates turns');
@@ -144,13 +144,13 @@ try {
   mode.defaultEditor.handleInput('\x0f');
   assert.match(render(), /FAILURE DETAIL/);
   assert.match(render(), /Operation aborted/);
-  patch.dispose();
+  dispose();
   assert.match(render(), /REPLAY THINKING/);
   assert.match(render(), /LIVE THINKING/);
   assert.deepEqual(diagnostics, []);
   process.stdout.write('HOST_PROBE_OK\n');
 } finally {
-  patch?.dispose();
+  dispose?.();
   Tui.setCapabilities(capabilities);
   mode.isInitialized = false;
   mode.stop();

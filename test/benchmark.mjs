@@ -59,9 +59,9 @@ function sample(expanded) {
   return { medianMs: Number(times[3].toFixed(3)), displayLines: lines.length };
 }
 const native = { collapsed: sample(false), expanded: sample(true) };
-const patch = installPresentation(loadConfig('work/missing').config, Pi.VERSION, console.error, { pi: Pi, tui: Tui, session });
-assert.equal(patch.enabled, true);
+const dispose = installPresentation(loadConfig('work/missing').config, Pi.VERSION, console.error, { pi: Pi, tui: Tui, session });
+assert.equal(typeof dispose, 'function');
 try {
   const compact = { collapsed: sample(false), expanded: sample(true) };
   console.log(JSON.stringify({ node: process.version, pi: Pi.VERSION, platform: `${platform()}-${arch()}`, workload: { source, sessionEntries: session.getBranch().length, toolCalls: calls.length, width: 100, samples: 7 }, native, compact }, null, 2));
-} finally { patch.dispose(); }
+} finally { dispose(); }

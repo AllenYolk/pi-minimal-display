@@ -1,6 +1,12 @@
 # Validation
 
-Candidate: 0.1.0-rc.1. Report date: 2026-09-05. Independent review covers `3b482e1...bc3c8b2`; runtime source is unchanged since `065216d`. Both review axes and the four-job CI matrix pass. The candidate is prepared for owner approval, not authorized for npm publication or daily-profile activation.
+Candidate: 0.1.0-rc.1. Report date: 2026-09-05. The baseline candidate review covers `3b482e1...bc3c8b2`, with runtime source from `065216d`. Both review axes and the four-job CI matrix passed for that baseline. Publication and daily-profile activation require owner approval.
+
+## Ponytail follow-up
+
+[Issue #8](https://github.com/AllenYolk/pi-minimal-display/issues/8) replaces the internal installation result object/flag/no-op implementation and separate owner token with one optional disposer. It removes dead startup cleanup and a redundant collapsed-click condition. Public behavior and necessary boundary checks remain unchanged; production source shrinks by 13 lines without new dependencies.
+
+All 24 checks pass. Against `a65066a`, five alternating before/after trials of the public recorded fixture produced byte-identical folded/expanded output (1,996/24,802 lines). Median-of-medians: folded 0.478 → 0.581 ms, expanded 4.713 → 5.047 ms. These timings do not establish a speedup; this change targets simpler ownership. Follow-up independent review and CI evidence are tracked in issue #8; the reviews below refer to the baseline, not automatically to later commits.
 
 ## Standards
 

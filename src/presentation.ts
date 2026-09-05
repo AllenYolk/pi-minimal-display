@@ -28,27 +28,21 @@ function displayText(value: unknown): string {
   return typeof value === 'string' ? stripVTControlCharacters(value).replace(/[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]/g, '') : '';
 }
 
-export interface Presentation {
-  enabled: boolean;
-  dispose(): void;
-}
-
-export function installPresentation(config: Config, version: unknown, report: (message: string) => void, host: { pi: typeof Pi; tui: typeof Tui; session?: Pick<Pi.SessionManager, 'getBranch'> }): Presentation {
-  const disabled: Presentation = { enabled: false, dispose() {} };
+export function installPresentation(config: Config, version: unknown, report: (message: string) => void, host: { pi: typeof Pi; tui: typeof Tui; session?: Pick<Pi.SessionManager, 'getBranch'> }): (() => void) | undefined {
   if (version !== CERTIFIED_PI_VERSION) {
     report(`Pi ${String(version)} is not certified (expected ${CERTIFIED_PI_VERSION}); using native display`);
-    return disabled;
+    return;
   }
   const { AssistantMessageComponent, SkillInvocationMessageComponent, ToolExecutionComponent, UserMessageComponent, keyText } = host.pi;
   const { Container, Text, truncateToWidth } = host.tui;
   if ([AssistantMessageComponent, SkillInvocationMessageComponent, ToolExecutionComponent, UserMessageComponent, Container, Text, truncateToWidth, keyText].some(value => typeof value !== 'function')) {
     report('Pi presentation exports are incompatible; using native display');
-    return disabled;
+    return;
   }
-  const proto = Container.prototype as Container & { [ownerKey]?: object };
+  const proto = Container.prototype as Container & { [ownerKey]?: () => void };
   if (proto[ownerKey]) {
     report('Another pi-minimal-display instance owns the presentation patch; using the existing instance');
-    return disabled;
+    return;
   }
   const originalRender = proto.render;
   const descriptor = Object.getOwnPropertyDescriptor(proto, 'render');
@@ -61,12 +55,12 @@ export function installPresentation(config: Config, version: unknown, report: (m
   const originalAssistantRender = assistantProto.render;
   if (typeof originalRender !== 'function' || !descriptor?.writable || !mouseDescriptor?.writable || typeof originalMouse !== 'function' || !Object.isExtensible(proto) || typeof originalUpdate !== 'function' || !thinkingDescriptor?.writable || !assistantRenderDescriptor?.writable) {
     report('Pi container rendering is incompatible; using native display');
-    return disabled;
+    return;
   }
   const signature = [originalRender, originalMouse, originalUpdate, originalAssistantRender].map(method => createHash('sha256').update(Function.prototype.toString.call(method)).digest('hex')).join(':');
   if (!certifiedMethods.has(signature)) {
     report('Pi presentation methods are modified or not certified; using native display');
-    return disabled;
+    return;
   }
   let active: Config | undefined = config;
   let session = host.session;
@@ -74,7 +68,6 @@ export function installPresentation(config: Config, version: unknown, report: (m
   const seenThinking = new WeakSet<AssistantMessageComponent>();
   // Expanded-text layout dominated the measured rendering cost; invalidate by serialized content.
   let retainedViews = new WeakMap<ToolExecutionComponent, { source: string; component: Tui.Text }>();
-  const token = {};
   const modeFor = (tool: ToolExecutionComponent, settings: Config) => {
     const name = stateOf(tool).toolName;
     return Object.hasOwn(settings.tools, name) ? settings.tools[name]! : settings.default;
@@ -154,8 +147,7 @@ export function installPresentation(config: Config, version: unknown, report: (m
           return result;
         }
         if (event.type !== 'click' || event.button !== 'left') return undefined;
-        const expanded = !members.some(tool => stateOf(tool).expanded);
-        for (const tool of members) tool.setExpanded(expanded);
+        for (const tool of members) tool.setExpanded(true);
         stateOf(members[0]!).ui.requestRender();
         return { handled: true };
       },
@@ -207,30 +199,27 @@ export function installPresentation(config: Config, version: unknown, report: (m
       finally { this.children = source; }
     } catch (error) {
       const notify = report;
-      patch.dispose();
+      dispose();
       notify(`Presentation failed: ${String(error)}; using native display`);
       return originalRender.call(this, width);
     }
   }
 
-  const patch: Presentation = {
-    enabled: true,
-    dispose() {
-      active = undefined;
-      session = undefined;
-      report = () => {};
-      retainedViews = new WeakMap();
-      if (proto.render === render) Object.defineProperty(proto, 'render', descriptor);
-      if (proto.handleMouse === handleMouse) Object.defineProperty(proto, 'handleMouse', mouseDescriptor);
-      if (assistantProto.updateContent === updateContent) Object.defineProperty(assistantProto, 'updateContent', thinkingDescriptor);
-      if (assistantProto.render === renderAssistant) Object.defineProperty(assistantProto, 'render', assistantRenderDescriptor);
-      if (proto[ownerKey] === token) delete proto[ownerKey];
-      for (const reference of thinkingComponents) reference.deref()?.invalidate();
-      thinkingComponents.clear();
-    },
+  const dispose = () => {
+    active = undefined;
+    session = undefined;
+    report = () => {};
+    retainedViews = new WeakMap();
+    if (proto.render === render) Object.defineProperty(proto, 'render', descriptor);
+    if (proto.handleMouse === handleMouse) Object.defineProperty(proto, 'handleMouse', mouseDescriptor);
+    if (assistantProto.updateContent === updateContent) Object.defineProperty(assistantProto, 'updateContent', thinkingDescriptor);
+    if (assistantProto.render === renderAssistant) Object.defineProperty(assistantProto, 'render', assistantRenderDescriptor);
+    if (proto[ownerKey] === dispose) delete proto[ownerKey];
+    for (const reference of thinkingComponents) reference.deref()?.invalidate();
+    thinkingComponents.clear();
   };
   try {
-    Object.defineProperty(proto, ownerKey, { value: token, configurable: true });
+    Object.defineProperty(proto, ownerKey, { value: dispose, configurable: true });
     proto.render = render;
     proto.handleMouse = handleMouse;
     if (config.hideThinking) {
@@ -239,9 +228,9 @@ export function installPresentation(config: Config, version: unknown, report: (m
     }
   } catch (error) {
     const notify = report;
-    patch.dispose();
+    dispose();
     notify(`Cannot install presentation patch: ${String(error)}; using native display`);
-    return disabled;
+    return;
   }
-  return patch;
+  return dispose;
 }

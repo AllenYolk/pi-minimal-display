@@ -1,15 +1,15 @@
 import * as Pi from '@earendil-works/pi-coding-agent';
 import * as Tui from '@earendil-works/pi-tui';
 import { CERTIFIED_PI_VERSION, loadConfig } from './config.js';
-import { installPresentation, type Presentation } from './presentation.js';
+import { installPresentation } from './presentation.js';
 
 export default function minimalDisplay(pi: Pi.ExtensionAPI): void {
-  let presentation: Presentation | undefined;
+  let dispose: (() => void) | undefined;
   let status = 'Native display (no interactive session)';
 
   pi.on('session_start', (_event, ctx) => {
-    presentation?.dispose();
-    presentation = undefined;
+    dispose?.();
+    dispose = undefined;
     if (ctx.mode !== 'tui' || !ctx.hasUI) return;
     const report = (message: string) => { status = message; ctx.ui.notify(`pi-minimal-display: ${message}`, 'warning'); };
     if (Pi.VERSION !== CERTIFIED_PI_VERSION) {
@@ -24,18 +24,16 @@ export default function minimalDisplay(pi: Pi.ExtensionAPI): void {
     const { config, diagnostic } = loadConfig(Pi.getAgentDir());
     if (!config) { report(diagnostic!); return; }
     try {
-      presentation = installPresentation(config, Pi.VERSION, report, { pi: Pi, tui: Tui, session: ctx.sessionManager });
-      if (presentation.enabled) status = `Active on Pi ${Pi.VERSION}; grouping=${config.grouping}; hideThinking=${config.hideThinking}`;
+      dispose = installPresentation(config, Pi.VERSION, report, { pi: Pi, tui: Tui, session: ctx.sessionManager });
+      if (dispose) status = `Active on Pi ${Pi.VERSION}; grouping=${config.grouping}; hideThinking=${config.hideThinking}`;
     } catch (error) {
-      presentation?.dispose();
-      presentation = undefined;
       report(`Cannot load presentation: ${String(error)}; using native display`);
     }
   });
 
   pi.on('session_shutdown', () => {
-    presentation?.dispose();
-    presentation = undefined;
+    dispose?.();
+    dispose = undefined;
     status = 'Native display (session stopped)';
   });
 

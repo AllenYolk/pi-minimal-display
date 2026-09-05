@@ -27,10 +27,10 @@ test('a third-party wrapper cannot keep a disposed session alive through its dia
       const session = Pi.SessionManager.inMemory(process.cwd());
       const ctx = { sessionManager: session, ui: { notify() {} } };
       const reference = new WeakRef(session);
-      const patch = installPresentation(loadConfig('work/missing').config, Pi.VERSION, message => ctx.ui.notify(message), { pi: Pi, tui: Tui, session });
-      assert.equal(patch.enabled, true);
+      const dispose = installPresentation(loadConfig('work/missing').config, Pi.VERSION, message => ctx.ui.notify(message), { pi: Pi, tui: Tui, session });
+      assert.equal(typeof dispose, 'function');
       Tui.Container.prototype.render = wrap(Tui.Container.prototype.render);
-      patch.dispose();
+      dispose();
       return reference;
     }
     const reference = disposedSession();
