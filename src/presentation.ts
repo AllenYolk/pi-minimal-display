@@ -28,14 +28,15 @@ function displayText(value: unknown): string {
   return typeof value === 'string' ? stripVTControlCharacters(value).replace(/[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]/g, '') : '';
 }
 
-export function installPresentation(config: Config, version: unknown, report: (message: string) => void, host: { pi: typeof Pi; tui: typeof Tui; session?: Pick<Pi.SessionManager, 'getBranch'> }): (() => void) | undefined {
+export function installPresentation(config: Config, version: unknown, report: (message: string) => void, host: { pi: typeof Pi; tui: typeof Tui; ui: Pick<Pi.ExtensionContext['ui'], 'theme'>; session?: Pick<Pi.SessionManager, 'getBranch'> }): (() => void) | undefined {
   if (version !== CERTIFIED_PI_VERSION) {
     report(`Pi ${String(version)} is not certified (expected ${CERTIFIED_PI_VERSION}); using native display`);
     return;
   }
   const { AssistantMessageComponent, ToolExecutionComponent, keyText } = host.pi;
-  const { Container, Text, truncateToWidth } = host.tui;
-  if ([AssistantMessageComponent, ToolExecutionComponent, Container, Text, truncateToWidth, keyText].some(value => typeof value !== 'function')) {
+  const { Container, Text, Box, Spacer, MouseRegion, truncateToWidth } = host.tui;
+  const initialTheme = host.ui?.theme;
+  if ([AssistantMessageComponent, ToolExecutionComponent, Container, Text, Box, Spacer, MouseRegion, truncateToWidth, keyText, initialTheme?.fg, initialTheme?.bg, initialTheme?.bold].some(value => typeof value !== 'function')) {
     report('Pi presentation exports are incompatible; using native display');
     return;
   }
@@ -64,6 +65,7 @@ export function installPresentation(config: Config, version: unknown, report: (m
   }
   let active: Config | undefined = config;
   let session = host.session;
+  let ui: typeof host.ui | undefined = host.ui;
   const thinkingComponents = new Set<WeakRef<AssistantMessageComponent>>();
   const seenThinking = new WeakSet<AssistantMessageComponent>();
   const modeFor = (tool: ToolExecutionComponent, settings: Config) => {
@@ -110,7 +112,12 @@ export function installPresentation(config: Config, version: unknown, report: (m
         const failed = [...new Set(members.filter(tool => stateOf(tool).result?.isError).map(tool => displayText(stateOf(tool).toolName)))];
         const pending = members.filter(tool => stateOf(tool).isPartial).length;
         const status = [failed.length ? `failed: ${failed.join(', ')}` : '', pending ? `${pending} pending` : '', !failed.length && !pending ? 'succeeded' : ''].filter(Boolean).join('; ');
-        const lines = new Text(`⚡ ${[...counts].map(([name, count]) => `${name} ×${count}`).join(' ')} — ${status} · ${keyText('app.tools.expand') || 'click'} to expand`, 0, 0).render(width);
+        const theme = ui!.theme;
+        const lines = [
+          theme.fg('toolTitle', theme.bold([...counts].map(([name, count]) => `${name} ×${count}`).join(' '))),
+          theme.fg('toolOutput', status) + theme.fg('muted', ` · ${keyText('app.tools.expand') || 'click'} to expand`),
+        ];
+        const contentWidth = Math.max(1, width - 2);
         const tool = members[0]!;
         const state = stateOf(tool);
         if (!active.grouping && modeFor(tool, active) === 'lines') {
@@ -118,13 +125,22 @@ export function installPresentation(config: Config, version: unknown, report: (m
           const command = Array.from(displayText(value).replace(/\s+/g, ' ').trim());
           const cap = active.bash.maxCommandChars;
           const preview = command.length > cap ? `${command.slice(0, cap - 1).join('')}…` : command.join('');
-          if (preview) lines.push(truncateToWidth(`${state.toolName === 'bash' ? '$' : state.toolName} ${preview}`, width));
+          if (preview) lines.push(truncateToWidth(`${state.toolName === 'bash' ? '$' : state.toolName} ${preview}`, contentWidth));
           if (state.toolName === 'bash' && active.bash.outputLines > 0) {
             const output = state.result?.content.filter(block => block.type === 'text').map(block => block.text ?? '').join('\n') ?? '';
-            lines.push(...displayText(output).split(/\r?\n/).slice(0, active.bash.outputLines).map(line => truncateToWidth(line, width)));
+            lines.push(...displayText(output).split(/\r?\n/).slice(0, active.bash.outputLines).map(line => truncateToWidth(line, contentWidth)));
           }
         }
-        return lines;
+        const background = failed.length ? 'toolErrorBg' : pending ? 'toolPendingBg' : 'toolSuccessBg';
+        const card = new Box(1, 1, text => theme.bg(background, text));
+        card.addChild(new Text(lines.join('\n'), 0, 0));
+        nativeView.children = [new Spacer(1), new MouseRegion(card, event => {
+          if (!active || event.type !== 'click' || event.button !== 'left') return undefined;
+          for (const tool of members) tool.setExpanded(true);
+          stateOf(members[0]!).ui.requestRender();
+          return { handled: true };
+        })];
+        return originalRender.call(nativeView, width);
       },
       invalidate() {},
       handleMouse(event: TuiMouseEvent) {
@@ -135,10 +151,7 @@ export function installPresentation(config: Config, version: unknown, report: (m
           }
           return result;
         }
-        if (event.type !== 'click' || event.button !== 'left') return undefined;
-        for (const tool of members) tool.setExpanded(true);
-        stateOf(members[0]!).ui.requestRender();
-        return { handled: true };
+        return originalMouse.call(nativeView, event);
       },
     };
   }
@@ -204,6 +217,7 @@ export function installPresentation(config: Config, version: unknown, report: (m
   const dispose = () => {
     active = undefined;
     session = undefined;
+    ui = undefined;
     report = () => {};
     if (proto.render === render) Object.defineProperty(proto, 'render', descriptor);
     if (proto.handleMouse === handleMouse) Object.defineProperty(proto, 'handleMouse', mouseDescriptor);

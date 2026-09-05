@@ -1,6 +1,14 @@
 # Validation
 
-Current trial candidate: 0.1.0-rc.2. Report date: 2026-09-05. The historical rc.1 review below covers `3b482e1...bc3c8b2`, with runtime source from `065216d`. Both review axes and the four-job CI matrix passed for that baseline. The owner has authorized the combined ordered/native-expansion trial update in issue #12, not npm publication.
+Current trial candidate: 0.1.0-rc.3. The native-card and automatic-mode update is tracked in [issue #14](https://github.com/AllenYolk/pi-minimal-display/issues/14). The owner approved implementation and trial promotion after checks/review, not npm publication. Older version evidence below is historical, not certification of later code.
+
+## Native cards and automatic minimal
+
+37 local checks pass. Fresh and resumed bundled-CLI sessions in regular/fullscreen show all six fixture tool counts (including ReadSeek and an unknown tool) before any command or key input; the PTY sends only exit after observing the complete minimal summary. A negative control using rc.2 fails because native raw tool output appears. Fresh UI events are deterministic test injection through the real InteractiveMode initial-render lifecycle, not a provider/model run.
+
+Real-host checks cover Ctrl+O and a custom Ctrl+G binding, native image/control preservation, and ordered groups. Actual CLI reloads alternate global expansion and preserve it. Entry lifecycle tests cover startup/new/resume/fork reset, reload preservation, status-only queries, conflict refusal and rollback if the native transition fails. Render tests cover dark/light themes, failure-over-pending precedence, native padding, 20-column wrapping, colored-padding clicks and non-clickable gaps. The GC probe includes a UI getter retaining the session and confirms disposal releases it.
+
+The same public 391-call workload renders 2,983 collapsed lines (rc.2: 2,135) and 14,889 expanded lines (unchanged). The additional 848 lines are the approved card spacing and second summary line. Local native → plugin medians: collapsed 2.462 → 1.939 ms; expanded 3.735 → 3.653 ms. These measurements do not imply a speedup over rc.2; native card styling deliberately costs more space/work. Full CI, independent review and exact deployment evidence are recorded in issue #14 before promotion.
 
 ## Native-expansion trial update
 

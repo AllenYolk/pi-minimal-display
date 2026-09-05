@@ -24,8 +24,8 @@ function mode(value: unknown): asserts value is Mode {
 export function loadConfig(agentDir: string): { config?: Config; diagnostic?: string } {
   const path = join(agentDir, 'extensions', 'pi-minimal-display', 'config.json');
   const defaults: Config = {
-    grouping: true, hideThinking: true, default: 'native',
-    tools: { read: 'count_only', grep: 'count_only', find: 'count_only', ls: 'count_only', bash: 'lines', edit: 'lines', write: 'lines' },
+    grouping: true, hideThinking: true, default: 'count_only',
+    tools: { read: 'count_only', grep: 'count_only', find: 'count_only', ls: 'count_only', bash: 'lines', edit: 'lines', write: 'lines', ask_user_question: 'native', plan_mode_question: 'native', plan_mode_complete: 'native' },
     bash: { maxCommandChars: 120, outputLines: 0 },
   };
   let raw: Record<string, unknown>;

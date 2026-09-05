@@ -7,7 +7,7 @@ export default function minimalDisplay(pi: Pi.ExtensionAPI): void {
   let dispose: (() => void) | undefined;
   let status = 'Native display (no interactive session)';
 
-  pi.on('session_start', (_event, ctx) => {
+  pi.on('session_start', (event, ctx) => {
     dispose?.();
     dispose = undefined;
     if (ctx.mode !== 'tui' || !ctx.hasUI) return;
@@ -23,10 +23,17 @@ export default function minimalDisplay(pi: Pi.ExtensionAPI): void {
     }
     const { config, diagnostic } = loadConfig(Pi.getAgentDir());
     if (!config) { report(diagnostic!); return; }
+    const wasExpanded = ctx.ui.getToolsExpanded();
     try {
-      dispose = installPresentation(config, Pi.VERSION, report, { pi: Pi, tui: Tui, session: ctx.sessionManager });
-      if (dispose) status = `Active on Pi ${Pi.VERSION}; grouping=${config.grouping}; hideThinking=${config.hideThinking}`;
+      dispose = installPresentation(config, Pi.VERSION, report, { pi: Pi, tui: Tui, ui: ctx.ui, session: ctx.sessionManager });
+      if (dispose) {
+        if (event.reason !== 'reload') ctx.ui.setToolsExpanded(false);
+        status = `Active on Pi ${Pi.VERSION}; grouping=${config.grouping}; hideThinking=${config.hideThinking}`;
+      }
     } catch (error) {
+      dispose?.();
+      dispose = undefined;
+      if (ctx.ui.getToolsExpanded() !== wasExpanded) ctx.ui.setToolsExpanded(wasExpanded);
       report(`Cannot load presentation: ${String(error)}; using native display`);
     }
   });

@@ -6,17 +6,98 @@ import * as Pi from '@earendil-works/pi-coding-agent';
 import * as Tui from '@earendil-works/pi-tui';
 import { installPresentation as install } from '../dist/presentation.js';
 import { loadConfig } from '../dist/config.js';
+import { theme } from '../node_modules/@earendil-works/pi-coding-agent/dist/modes/interactive/theme/theme.js';
+import { stripVTControlCharacters } from 'node:util';
 
 initTheme('dark');
 const config = loadConfig('work/missing-profile').config;
-const ui = { requestRender() {} };
+config.tools.custom = 'native';
+const ui = { requestRender() {}, get theme() { return theme; } };
 const bash = createBashToolDefinition(process.cwd());
-const installPresentation = (settings, version, report) => install(settings, version, report, { pi: Pi, tui: Tui });
+const installPresentation = (settings, version, report) => install(settings, version, report, { pi: Pi, tui: Tui, ui });
 function tool(name, id, text, definition = bash) {
   const component = new ToolExecutionComponent(name, id, { command: `echo ${id}` }, {}, definition, ui, process.cwd());
   component.updateResult({ content: [{ type: 'text', text }], isError: false });
   return component;
 }
+
+test('summary cards use native padding, theme and separate count/status lines', () => {
+  const dispose = installPresentation(config, Pi.VERSION, () => {});
+  try {
+    const transcript = new Container();
+    transcript.addChild(tool('readSeek_edit', 'edit', 'hidden'));
+    const output = transcript.render(100);
+    assert.equal(output.length, 5);
+    assert.equal(output[0], '');
+    assert.equal(stripVTControlCharacters(output[1]), ' '.repeat(100));
+    assert.equal(stripVTControlCharacters(output[2]).trim(), 'readSeek_edit ×1');
+    assert.match(stripVTControlCharacters(output[3]), /succeeded.*to expand/);
+    assert.equal(stripVTControlCharacters(output[4]), ' '.repeat(100));
+    assert.ok(output[2].includes(theme.bold('readSeek_edit ×1')));
+    assert.equal(output[1], theme.bg('toolSuccessBg', ' '.repeat(100)));
+  } finally { dispose(); }
+});
+
+test('card colors follow current dark/light themes and failures win over pending work', () => {
+  const dispose = installPresentation(config, Pi.VERSION, () => {});
+  try {
+    const transcript = new Container();
+    const first = tool('bash', 'first', 'hidden');
+    const second = tool('readSeek_grep', 'second', 'hidden');
+    transcript.children.push(first, second);
+    for (const name of ['dark', 'light']) {
+      initTheme(name);
+      first.updateResult({ content: [], isError: false });
+      second.updateResult({ content: [], isError: false });
+      assert.equal(transcript.render(80)[1], theme.bg('toolSuccessBg', ' '.repeat(80)));
+      second.updateResult({ content: [], isError: false }, true);
+      assert.equal(transcript.render(80)[1], theme.bg('toolPendingBg', ' '.repeat(80)));
+      first.updateResult({ content: [], isError: true });
+      assert.equal(transcript.render(80)[1], theme.bg('toolErrorBg', ' '.repeat(80)));
+      const narrow = transcript.render(20);
+      assert.ok(narrow.every(line => visibleWidth(line) <= 20));
+      const text = narrow.map(stripVTControlCharacters).join(' ').replace(/\s+/g, ' ');
+      assert.match(text, /failed: bash/);
+      assert.match(text, /1 pending/);
+    }
+  } finally { dispose(); initTheme('dark'); }
+});
+
+test('ordinary registered names compact without guessing labels and interactive tools stay native', () => {
+  const dispose = installPresentation(config, Pi.VERSION, () => {});
+  try {
+    const transcript = new Container();
+    for (const name of ['bash', 'edit', 'grep', 'readSeek_edit', 'readSeek_grep', 'future_tool']) transcript.addChild(tool(name, name, 'HIDDEN ORDINARY RESULT'));
+    for (const name of ['ask_user_question', 'plan_mode_question', 'plan_mode_complete', 'custom']) transcript.addChild(tool(name, name, `VISIBLE_${name}`));
+    const text = stripVTControlCharacters(transcript.render(180).join('\n'));
+    assert.match(text, /bash ×1 edit ×1 grep ×1 readSeek_edit ×1 readSeek_grep ×1 future_tool ×1/);
+    assert.doesNotMatch(text, /HIDDEN ORDINARY RESULT/);
+    for (const name of ['ask_user_question', 'plan_mode_question', 'plan_mode_complete', 'custom']) assert.match(text, new RegExp(`VISIBLE_${name}`));
+  } finally { dispose(); }
+});
+
+test('all colored padding is clickable, the leading gap is not, including after resize', () => {
+  const dispose = installPresentation(config, Pi.VERSION, () => {});
+  try {
+    const transcript = new Container();
+    const call = tool('readSeek_edit', 'padding', 'EXPANDED FROM PADDING');
+    transcript.addChild(call);
+    const event = { type: 'click', button: 'left', x: 0, y: 0, width: 80, height: 5 };
+    transcript.render(80);
+    assert.equal(transcript.handleMouse(event), undefined);
+    assert.doesNotMatch(transcript.render(80).join('\n'), /EXPANDED FROM PADDING/);
+    for (const width of [80, 20]) {
+      for (const edge of ['top', 'bottom', 'left', 'right']) {
+        call.setExpanded(false);
+        const lines = transcript.render(width);
+        const y = edge === 'top' ? 1 : edge === 'bottom' ? lines.length - 1 : 2;
+        const x = edge === 'right' ? width - 1 : 0;
+        assert.equal(transcript.handleMouse({ ...event, width, x, y })?.handled, true);
+        assert.match(transcript.render(80).join('\n'), /EXPANDED FROM PADDING/);
+      }
+    }
+  } finally { dispose(); }
+});
 
 test('a turn groups mixed calls, native expansion retains details, disposal restores the host', () => {
   const before = Container.prototype.render;
@@ -91,7 +172,7 @@ test('image-only user messages in the session split groups even without a visibl
   session.appendMessage({ role: 'assistant', content: [{ type: 'toolCall', id: 'a', name: 'bash', arguments: {} }], timestamp: 2 });
   session.appendMessage({ role: 'user', content: [{ type: 'image', data: 'fixture', mimeType: 'image/png' }], timestamp: 3 });
   session.appendMessage({ role: 'assistant', content: [{ type: 'toolCall', id: 'b', name: 'bash', arguments: {} }], timestamp: 4 });
-  const dispose = install(config, '0.85.0', () => {}, { pi: Pi, tui: Tui, session });
+  const dispose = install(config, '0.85.0', () => {}, { pi: Pi, tui: Tui, ui, session });
   try {
     const transcript = new Container();
     transcript.addChild(tool('bash', 'a', 'A'));
@@ -165,7 +246,7 @@ test('new members of an expanded group use their expanded native renderer', () =
 
 test('a rendering-adapter fault restores native content and reports only once', () => {
   const messages = [];
-  const dispose = install(config, '0.85.0', value => messages.push(value), { pi: { ...Pi, keyText() { throw new Error('changed key helper'); } }, tui: Tui });
+  const dispose = install(config, '0.85.0', value => messages.push(value), { pi: { ...Pi, keyText() { throw new Error('changed key helper'); } }, tui: Tui, ui });
   try {
     const transcript = new Container();
     transcript.addChild(tool('bash', 'safe', 'FALLBACK DETAIL'));
@@ -178,16 +259,17 @@ test('a rendering-adapter fault restores native content and reports only once', 
 
 test('a changed host shape is rejected before patching', () => {
   const before = Container.prototype.render;
-  const messages = [];
-  const dispose = install(config, '0.85.0', value => messages.push(value), { pi: { ...Pi, ToolExecutionComponent: undefined }, tui: Tui });
-  assert.equal(dispose, undefined);
-  assert.equal(Container.prototype.render, before);
-  assert.equal(messages.length, 1);
+  for (const host of [{ pi: { ...Pi, ToolExecutionComponent: undefined }, tui: Tui, ui }, { pi: Pi, tui: Tui, ui: { theme: undefined } }]) {
+    const messages = [];
+    assert.equal(install(config, '0.85.0', value => messages.push(value), host), undefined);
+    assert.equal(Container.prototype.render, before);
+    assert.equal(messages.length, 1);
+  }
 });
 
 test('session projection faults also fall back to native rendering', () => {
   const messages = [];
-  const dispose = install(config, Pi.VERSION, message => messages.push(message), { pi: Pi, tui: Tui, session: { getBranch() { throw new Error('session unavailable'); } } });
+  const dispose = install(config, Pi.VERSION, message => messages.push(message), { pi: Pi, tui: Tui, ui, session: { getBranch() { throw new Error('session unavailable'); } } });
   try {
     const transcript = new Container();
     transcript.addChild(tool('bash', 'safe', 'NATIVE DETAIL'));
@@ -219,7 +301,7 @@ test('direct transcript changes and user/skill boundaries preserve native cards 
     pending.updateResult({ content: [{ type: 'text', text: 'partial' }], isError: false }, true);
     const unknown = tool('custom', 'native', 'NATIVE RESULT');
     transcript.children.push(first, pending, unknown);
-    assert.match(transcript.render(80).join('\n'), /bash ×2.*failed: bash; 1 pending/);
+    assert.match(transcript.render(80).join('\n'), /bash ×2[\s\S]*failed: bash; 1 pending/);
     assert.match(transcript.render(80).join('\n'), /NATIVE RESULT/);
     transcript.children.splice(1, 0, new UserMessageComponent('next'));
     assert.equal((transcript.render(80).join('\n').match(/bash ×1/g) ?? []).length, 2);
@@ -291,7 +373,7 @@ test('click expansion uses the projected group layout even after resizing', () =
     transcript.addChild(first);
     transcript.addChild(second);
     const lines = transcript.render(80);
-    const event = { type: 'click', button: 'left', x: 1, y: 0, width: 40, height: lines.length, modifiers: { shift: false, alt: false, ctrl: false } };
+    const event = { type: 'click', button: 'left', x: 1, y: 1, width: 40, height: lines.length, modifiers: { shift: false, alt: false, ctrl: false } };
     assert.equal(transcript.handleMouse(event)?.handled, true);
     assert.equal(first.expanded, true);
     assert.equal(second.expanded, true);

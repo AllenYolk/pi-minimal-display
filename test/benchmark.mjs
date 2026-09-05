@@ -5,6 +5,7 @@ import { readFileSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 import * as Pi from '@earendil-works/pi-coding-agent';
 import * as Tui from '@earendil-works/pi-tui';
+import { theme } from '../node_modules/@earendil-works/pi-coding-agent/dist/modes/interactive/theme/theme.js';
 import { loadConfig } from '../dist/config.js';
 import { installPresentation } from '../dist/presentation.js';
 
@@ -59,7 +60,7 @@ function sample(expanded) {
   return { medianMs: Number(times[3].toFixed(3)), displayLines: lines.length };
 }
 const native = { collapsed: sample(false), expanded: sample(true) };
-const dispose = installPresentation(loadConfig('work/missing').config, Pi.VERSION, console.error, { pi: Pi, tui: Tui, session });
+const dispose = installPresentation(loadConfig('work/missing').config, Pi.VERSION, console.error, { pi: Pi, tui: Tui, ui: { get theme() { return theme; } }, session });
 assert.equal(typeof dispose, 'function');
 try {
   const compact = { collapsed: sample(false), expanded: sample(true) };

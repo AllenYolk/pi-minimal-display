@@ -3,10 +3,13 @@
 Compact, expandable tool activity for Pi. Consecutive tool calls become a summary such as:
 
 ```text
-⚡ bash ×3 read ×4 edit ×1 — succeeded · ctrl+o to expand
+bash ×3 read ×4 edit ×1
+succeeded · ctrl+o to expand
 ```
 
 Failed tools are named in the summary, even while other calls are pending. Click a group or use Pi's configured tool-expansion shortcut to inspect its retained native details. Execution, tool definitions, model context, and saved conversation data are unchanged.
+
+Summaries use the current Pi theme and native tool-card padding/backgrounds. Failure takes precedence over pending work when selecting a background. Colored padding is clickable; the preceding blank line is not. Startup, new, resumed and forked sessions automatically begin minimal; `/reload` preserves Pi's current global expansion state. The existing tool shortcut (Ctrl+O by default) remains a two-state minimal/expanded toggle, including when rebound. `/minimal-display` only reports status; it is never required to activate the extension.
 
 Status: release candidate prepared for owner approval; not published to npm. Independent Standards and Spec reviews found no remaining release blockers. The runtime adapter accepts **Pi 0.85.0 only**. Unknown versions stay native and display a diagnostic. Compatibility results and limitations live in [validation](docs/validation.md).
 
@@ -36,7 +39,7 @@ Create `extensions/pi-minimal-display/config.json` under Pi's actual agent direc
 {
   "grouping": true,
   "hideThinking": true,
-  "default": "native",
+  "default": "count_only",
   "tools": {
     "read": "count_only",
     "grep": "count_only",
@@ -44,16 +47,20 @@ Create `extensions/pi-minimal-display/config.json` under Pi's actual agent direc
     "ls": "count_only",
     "bash": "lines",
     "edit": "lines",
-    "write": "lines"
+    "write": "lines",
+    "ask_user_question": "native",
+    "plan_mode_question": "native",
+    "plan_mode_complete": "native"
   },
   "bash": { "maxCommandChars": 120, "outputLines": 0 }
 }
 ```
 
-- `native`: preserve Pi's existing tool presentation. Unknown tools use this by default.
+- `native`: preserve Pi's existing tool presentation. The three known interactive tools above use this by default; add other interactive tools by their actual registered names when needed.
 - `count_only`: compact count/status, with retained native details on expansion.
 - `lines`: joins the same group as count-only tools. When `grouping` is false, also shows a short command/path preview. Bash can show up to `outputLines` text lines.
 - Tool overrides use exact names; defaults for other built-ins remain in effect. There is no MCP discovery or gateway-name guessing.
+- Ordinary tools default to count-only, including `readSeek_edit`, `readSeek_grep` and future tool names. Counts identify actual registered names, not renderer titles. Explicit `default` and `tools` values remain authoritative; existing configurations explicitly setting `default: "native"` are not overwritten. To keep the pre-rc.3 unknown-tool behavior, set that value explicitly.
 - `maxCommandChars` accepts integers 8–500, measured in Unicode code points; the preview also fits the terminal width. `outputLines` accepts integers 0–50. Neither changes actual arguments or results.
 - `hideThinking` suppresses the visual thinking block. Original message content and streaming flags are retained.
 

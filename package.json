@@ -1,6 +1,6 @@
 {
   "name": "@allenyolk/pi-minimal-display",
-  "version": "0.1.0-rc.2",
+  "version": "0.1.0-rc.3",
   "publishConfig": { "access": "public" },
   "description": "Compact, expandable Pi tool cards with reversible presentation patches.",
   "type": "module",

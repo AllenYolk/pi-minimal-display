@@ -21,6 +21,7 @@ export default function probe(pi: ExtensionAPI) {
         assert.ok(ctx.hasUI);
         assert.ok(restored, 'previous runtime patch was not restored before reload');
         assert.notEqual(Container.prototype.render, baseline);
+        assert.equal(ctx.ui.getToolsExpanded(), run.round % 2 === 1, 'startup is minimal; reload preserves the previous global state');
         const definition = createBashToolDefinition(ctx.cwd);
         const transcript = new Container();
         transcript.addChild(new UserMessageComponent('synthetic fixture input'));
@@ -44,6 +45,7 @@ export default function probe(pi: ExtensionAPI) {
         const reloads = Number(process.env.PI_DISPLAY_PROBE_RELOADS ?? 0);
         if (run.round < reloads) {
           run.round++;
+          ctx.ui.setToolsExpanded(run.round % 2 === 1);
           const configDir = join(getAgentDir(), 'extensions/pi-minimal-display');
           mkdirSync(configDir, { recursive: true });
           writeFileSync(join(configDir, 'config.json'), JSON.stringify({ hideThinking: run.round % 2 === 0 }));

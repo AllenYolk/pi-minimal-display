@@ -2,6 +2,8 @@
 
 Status: Review direction approved by the owner on 2026-09-05. The authoritative implementation contract is the GitHub spec issue.
 
+The approved [native-card/automatic-mode plan (#14)](https://github.com/AllenYolk/pi-minimal-display/issues/14) changes ordinary-tool defaults to count-only and retains exact native exclusions for known interactive tools. Summaries use native theme/padding and two lines; native global expansion is the only mode state. Entering sessions starts minimal, while reload preserves global expansion. No command is required for first paint.
+
 Owner trial feedback supersedes whole-turn grouping in [issue #10](https://github.com/AllenYolk/pi-minimal-display/issues/10): only consecutive managed calls form a group; intervening text/thinking, native tools and other output keep their original positions. Empty assistant tool-call placeholders may be crossed. The owner subsequently approved [issue #12](https://github.com/AllenYolk/pi-minimal-display/issues/12): remove the Retained data appendix and use native expansion only, preserving raw session/model data without adding a second raw-data UI.
 
 ## Starting point

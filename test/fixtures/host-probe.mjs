@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { createRequire } from 'node:module';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
+import { writeFileSync } from 'node:fs';
 import * as Pi from '@earendil-works/pi-coding-agent';
 import { loadConfig } from '../../dist/config.js';
 import { installPresentation } from '../../dist/presentation.js';
@@ -13,6 +14,9 @@ const profile = process.env.PI_CODING_AGENT_DIR;
 assert.equal(profile, process.cwd());
 assert.equal(Pi.getAgentDir(), profile);
 assert.equal(process.env.PI_OFFLINE, '1');
+const expandKey = process.env.PI_HOST_EXPAND_KEY ?? 'ctrl+o';
+const expandInput = expandKey === 'ctrl+g' ? '\x07' : '\x0f';
+writeFileSync(join(profile, 'keybindings.json'), JSON.stringify({ 'app.tools.expand': expandKey }));
 
 const png = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+ip1sAAAAASUVORK5CYII=';
 const image = { type: 'image', data: png, mimeType: 'image/png' };
@@ -62,22 +66,27 @@ let dispose;
 try {
   mode.renderSessionEntries(manager.buildContextEntries(), { populateHistory: true });
   assert.ok(mode.chatContainer.children.some(child => child instanceof Pi.ToolExecutionComponent));
-  mode.defaultEditor.handleInput('\x0f');
+  mode.defaultEditor.handleInput(expandInput);
   const native = render();
   const nativeImages = images(native);
   assert.equal(nativeImages.length, 1, 'native replay must emit one iTerm2 image');
   assert.ok(nativeImages[0].includes(png));
   assert.match(native, /REPLAY THINKING/);
-  mode.defaultEditor.handleInput('\x0f');
+  mode.defaultEditor.handleInput(expandInput);
   const before = snapshot();
-  dispose = installPresentation(loadConfig(profile).config, Pi.VERSION, message => diagnostics.push(message), { pi: Pi, tui: Tui, session: manager });
+  dispose = installPresentation(loadConfig(profile).config, Pi.VERSION, message => diagnostics.push(message), { pi: Pi, tui: Tui, ui: mode.createExtensionUIContext(), session: manager });
   assert.equal(typeof dispose, 'function', diagnostics.join('\n'));
   const collapsed = render();
+  assert.ok(collapsed.includes(expandKey));
+  if (expandKey === 'ctrl+g') {
+    mode.defaultEditor.handleInput('\x0f');
+    assert.equal(render(), collapsed, 'old binding must not switch display mode');
+  }
   assert.match(collapsed, /bash ×1 read ×1/);
   assert.equal((collapsed.match(/bash ×1/g) ?? []).length, 2, 'image-only user arrival separates turns');
   assert.doesNotMatch(collapsed, /REPLAY_OUTPUT|REPLAY THINKING|SECOND_TURN/);
   assert.deepEqual(images(collapsed), []);
-  mode.defaultEditor.handleInput('\x0f');
+  mode.defaultEditor.handleInput(expandInput);
   const expanded = render();
   assert.doesNotMatch(expanded, /Retained data/);
   assert.match(expanded, /REPLAY_OUTPUT/);
@@ -85,12 +94,17 @@ try {
   assert.deepEqual(images(expanded), nativeImages, 'expanded rendering must preserve the native image protocol payload');
   assert.equal(snapshot(), before, 'rendering and key dispatch must not change saved/model data');
 
-  mode.defaultEditor.handleInput('\x0f');
+  mode.defaultEditor.handleInput(expandInput);
   const lines = mode.chatContainer.render(100);
   const y = lines.findIndex(line => line.includes('bash ×1 read ×1'));
   assert.ok(y >= 0);
   assert.equal(mode.chatContainer.handleMouse({ type: 'click', button: 'left', x: 2, y, screenX: 2, screenY: y, width: 100, height: lines.length })?.handled, true);
   assert.deepEqual(images(render()), nativeImages, 'mouse expansion must expose the retained image');
+  mode.defaultEditor.handleInput(expandInput);
+  assert.match(render(), /SECOND_TURN/, 'global expansion includes groups not opened by the mouse');
+  mode.defaultEditor.handleInput(expandInput);
+  assert.doesNotMatch(render(), /REPLAY_OUTPUT|SECOND_TURN/);
+  mode.chatContainer.handleMouse({ type: 'click', button: 'left', x: 2, y, screenX: 2, screenY: y, width: 100, height: mode.chatContainer.render(100).length });
   const nativeLines = mode.chatContainer.render(100);
   const nativeY = nativeLines.findIndex(line => line.includes('printf REPLAY_OUTPUT'));
   assert.ok(nativeY >= 0);
@@ -118,9 +132,9 @@ try {
   manager.appendMessage(afterCommentary);
   await mode.handleEvent({ type: 'tool_execution_end', toolCallId: 'after-commentary', toolName: 'bash', result: afterCommentary, isError: false });
   assert.match(render(), /bash ×1 read ×1[\s\S]*BETWEEN_HOST_CALLS[\s\S]*bash ×1/);
-  mode.defaultEditor.handleInput('\x0f');
+  mode.defaultEditor.handleInput(expandInput);
   assert.match(render(), /REPLAY_OUTPUT[\s\S]*BETWEEN_HOST_CALLS[\s\S]*AFTER_HOST_RESULT/);
-  mode.defaultEditor.handleInput('\x0f');
+  mode.defaultEditor.handleInput(expandInput);
 
   mode.subscribeToAgent();
   await runtime.session.followUp('Live next turn');
@@ -141,21 +155,21 @@ try {
   assert.equal(JSON.stringify(pending), pendingBefore);
   assert.match(render(), /LIVE COMMENTARY/);
   assert.doesNotMatch(render(), /LIVE THINKING/);
-  assert.match(render(), /bash ×2.*2 pending/);
+  assert.match(render(), /bash ×2[\s\S]*2 pending/);
   for (const id of ['live-failure', 'live-pending']) {
     await mode.handleEvent({ type: 'tool_execution_start', toolCallId: id, toolName: 'bash', args: { command: 'fixture' } });
   }
   await mode.handleEvent({ type: 'tool_execution_update', toolCallId: 'live-pending', toolName: 'bash', partialResult: { content: [text('LIVE_PARTIAL_RESULT')] } });
-  mode.defaultEditor.handleInput('\x0f');
+  mode.defaultEditor.handleInput(expandInput);
   assert.match(render(), /LIVE_PARTIAL_RESULT/);
-  mode.defaultEditor.handleInput('\x0f');
+  mode.defaultEditor.handleInput(expandInput);
   await mode.handleEvent({ type: 'tool_execution_end', toolCallId: 'live-failure', toolName: 'bash', result: { content: [text('FAILURE DETAIL')] }, isError: true });
-  assert.match(render(), /bash ×2.*failed: bash; 1 pending/);
+  assert.match(render(), /bash ×2[\s\S]*failed: bash; 1 pending/);
   const aborted = { ...pending, stopReason: 'aborted' };
   await mode.handleEvent({ type: 'message_end', message: aborted });
-  assert.match(render(), /bash ×2.*failed: bash/);
+  assert.match(render(), /bash ×2[\s\S]*failed: bash/);
   assert.doesNotMatch(render(), /\d+ pending/);
-  mode.defaultEditor.handleInput('\x0f');
+  mode.defaultEditor.handleInput(expandInput);
   assert.match(render(), /FAILURE DETAIL/);
   assert.match(render(), /Operation aborted/);
   dispose();
