@@ -133,6 +133,30 @@ test('a changed host shape is rejected before patching', () => {
   assert.equal(messages.length, 1);
 });
 
+test('session projection faults also fall back to native rendering', () => {
+  const messages = [];
+  const patch = install(config, Pi.VERSION, message => messages.push(message), { pi: Pi, tui: Tui, session: { getBranch() { throw new Error('session unavailable'); } } });
+  try {
+    const transcript = new Container();
+    transcript.addChild(tool('bash', 'safe', 'NATIVE DETAIL'));
+    assert.match(transcript.render(80).join('\n'), /NATIVE DETAIL/);
+    assert.equal(messages.length, 1);
+  } finally { patch.dispose(); }
+});
+
+test('disposed mouse wrappers do not render the transcript again', () => {
+  const patch = installPresentation(config, Pi.VERSION, () => {});
+  const staleMouse = Container.prototype.handleMouse;
+  const transcript = new Container();
+  transcript.addChild(tool('bash', 'mouse', 'DETAIL'));
+  transcript.render(80);
+  patch.dispose();
+  transcript.render = () => { throw new Error('unexpected render'); };
+  const call = transcript.children[0];
+  call.render = () => { throw new Error('unexpected tool render'); };
+  assert.doesNotThrow(() => staleMouse.call(transcript, { type: 'move', width: 80, height: 10, x: 0, y: 0 }));
+});
+
 test('direct transcript changes and user/skill boundaries preserve native cards and failures', () => {
   const patch = installPresentation(config, '0.85.0', () => {});
   try {

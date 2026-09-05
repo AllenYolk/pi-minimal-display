@@ -163,6 +163,7 @@ export function installPresentation(config: Config, version: unknown, report: (m
   }
 
   function handleMouse(this: Container, event: TuiMouseEvent) {
+    if (!active) return originalMouse.call(this, event);
     if (this.children.some(child => child instanceof ToolExecutionComponent)) {
       const height = render.call(this, event.width).length;
       return originalMouse.call(this, { ...event, height });
@@ -173,40 +174,41 @@ export function installPresentation(config: Config, version: unknown, report: (m
   function render(this: Container, width: number): string[] {
     if (!active || !this.children.some(child => child instanceof ToolExecutionComponent)) return originalRender.call(this, width);
     const source = this.children;
-    const turnIds = new Map<string, string>();
-    let currentTurn = 'initial';
-    for (const entry of session?.getBranch() ?? []) {
-      if (entry.type !== 'message') continue;
-      if (entry.message.role === 'user') currentTurn = entry.id;
-      if (entry.message.role === 'assistant') {
-        for (const block of entry.message.content) if (block.type === 'toolCall') turnIds.set(block.id, currentTurn);
-      }
-    }
-    const projected: Component[] = [];
-    let members: ToolExecutionComponent[] | undefined;
-    let groupTurn: string | undefined;
-    for (const child of source) {
-      if (child instanceof UserMessageComponent || child instanceof SkillInvocationMessageComponent) members = undefined;
-      if (!(child instanceof ToolExecutionComponent) || modeFor(child, active) === 'native') {
-        projected.push(child);
-      } else {
-        const turn = turnIds.get(stateOf(child).toolCallId) ?? currentTurn;
-        if (!members || !active.grouping || turn !== groupTurn) {
-          members = [];
-          groupTurn = turn;
-          projected.push(group(members));
-        }
-        members.push(child);
-      }
-    }
-    // Original rendering records the projected mouse layout; restore transcript ownership afterwards.
     try {
+      const turnIds = new Map<string, string>();
+      let currentTurn = 'initial';
+      for (const entry of session?.getBranch() ?? []) {
+        if (entry.type !== 'message') continue;
+        if (entry.message.role === 'user') currentTurn = entry.id;
+        if (entry.message.role === 'assistant') {
+          for (const block of entry.message.content) if (block.type === 'toolCall') turnIds.set(block.id, currentTurn);
+        }
+      }
+      const projected: Component[] = [];
+      let members: ToolExecutionComponent[] | undefined;
+      let groupTurn: string | undefined;
+      for (const child of source) {
+        if (child instanceof UserMessageComponent || child instanceof SkillInvocationMessageComponent) members = undefined;
+        if (!(child instanceof ToolExecutionComponent) || modeFor(child, active) === 'native') {
+          projected.push(child);
+        } else {
+          const turn = turnIds.get(stateOf(child).toolCallId) ?? currentTurn;
+          if (!members || !active.grouping || turn !== groupTurn) {
+            members = [];
+            groupTurn = turn;
+            projected.push(group(members));
+          }
+          members.push(child);
+        }
+      }
+      // Original rendering records the projected mouse layout; restore transcript ownership afterwards.
       this.children = projected;
       try { return originalRender.call(this, width); }
       finally { this.children = source; }
     } catch (error) {
+      const notify = report;
       patch.dispose();
-      report(`Presentation failed: ${String(error)}; using native display`);
+      notify(`Presentation failed: ${String(error)}; using native display`);
       return originalRender.call(this, width);
     }
   }
@@ -216,6 +218,7 @@ export function installPresentation(config: Config, version: unknown, report: (m
     dispose() {
       active = undefined;
       session = undefined;
+      report = () => {};
       retainedViews = new WeakMap();
       if (proto.render === render) Object.defineProperty(proto, 'render', descriptor);
       if (proto.handleMouse === handleMouse) Object.defineProperty(proto, 'handleMouse', mouseDescriptor);
@@ -235,8 +238,9 @@ export function installPresentation(config: Config, version: unknown, report: (m
       assistantProto.render = renderAssistant;
     }
   } catch (error) {
+    const notify = report;
     patch.dispose();
-    report(`Cannot install presentation patch: ${String(error)}; using native display`);
+    notify(`Cannot install presentation patch: ${String(error)}; using native display`);
     return disabled;
   }
   return patch;
