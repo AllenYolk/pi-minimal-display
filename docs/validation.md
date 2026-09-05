@@ -6,7 +6,7 @@ Current release candidate: `v0.1.0` for GitHub; the current installed local tria
 
 The release candidate removes the exact-version gate. It still requires the tested exports, writable descriptors and complete presentation-method signature; incompatible hosts fail closed to native display. This avoids a plugin release for Pi changes outside the patched seam. Pi 0.85.1 changed its bundled Assistant/status fingerprints, so that bundle received a separate allowlisted signature only after the full real-CLI suite passed; the unbundled presentation seam remained compatible. Pi core imports are `"*"` peers per Pi's package guidance, while development dependencies pin the latest tested host.
 
-On macOS arm64 and Node 24.12.0, all 40 checks pass against Pi 0.85.1. The same release working tree also passes 40/40 after installing Pi/Tui 0.85.0 without changing the lockfile; `npm ci` then restores the locked 0.85.1 host. The 0.85.1 synthetic 320-call benchmark renders 320/5,560 compact lines with 0.609/1.646 ms collapsed/expanded medians; this is compatibility evidence, not a speed claim.
+On macOS arm64 and Node 24.12.0, all 40 checks pass against Pi 0.85.1. The same release working tree also passes 40/40 after installing Pi/Tui 0.85.0 plus its development-only undeclared `pi-server` import without changing the lockfile; the release package does not ship or require that workaround. `npm ci` then restores the locked 0.85.1 host. The 0.85.1 synthetic 320-call benchmark renders 320/5,560 compact lines with 0.609/1.646 ms collapsed/expanded medians; this is compatibility evidence, not a speed claim. CI runs both hosts across macOS/Ubuntu and Node 22/24.
 
 ## Native thinking visibility
 
