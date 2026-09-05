@@ -8,7 +8,7 @@ Compact, expandable tool activity for Pi. A user turn containing many calls beco
 
 Failed tools are named in the summary, even while other calls are pending. Click a group or use Pi's configured tool-expansion shortcut to inspect its retained native details. Execution, tool definitions, model context, and saved conversation data are unchanged.
 
-Status: release candidate under review; not published to npm. The runtime adapter accepts **Pi 0.85.0 only**. Unknown versions stay native and display a diagnostic. Compatibility results and limitations live in [validation](docs/validation.md).
+Status: release candidate prepared for owner approval; not published to npm. Independent Standards and Spec reviews found no remaining release blockers. The runtime adapter accepts **Pi 0.85.0 only**. Unknown versions stay native and display a diagnostic. Compatibility results and limitations live in [validation](docs/validation.md).
 
 ## Try in an isolated profile
 

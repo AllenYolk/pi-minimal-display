@@ -1,6 +1,16 @@
 # Validation
 
-Candidate: 0.1.0-rc.1. Report date: 2026-09-05. Runtime review fixes and the remote CI matrix pass at `065216d`; additional host-integration review is pending. This is not a release sign-off.
+Candidate: 0.1.0-rc.1. Report date: 2026-09-05. Independent review covers `3b482e1...bc3c8b2`; runtime source is unchanged since `065216d`. Both review axes and the four-job CI matrix pass. The candidate is prepared for owner approval, not authorized for npm publication or daily-profile activation.
+
+## Standards
+
+No remaining release blockers or actionable heuristic smells. The independent reviewer reran all 24 checks and the public recorded-session benchmark. Prior gaps in real-host integration and recorded-transcript evidence are closed. The adapter's private host access remains confined to the explicitly approved presentation boundary.
+
+## Spec
+
+No remaining release-blocking findings against issue #1. Earlier thinking restoration, native controls, retained data, streaming expansion, image-only boundaries, RPC/conflict, disposal and host-evidence findings are closed with regressions. This reviewer independently inspected pinned CI and reran the recorded benchmark; local file-writing host/package probes were not rerun by that reviewer.
+
+Summary: Standards 0 unresolved findings; Spec 0 unresolved findings. Independent reviews are evidence, not a guarantee that every environment is covered.
 
 ## Local evidence
 
@@ -56,4 +66,4 @@ npm run benchmark -- work/upstream-large-session.jsonl
 
 ## Certification limits
 
-Only exact Pi 0.85.0 is accepted by the runtime gate. A future Pi version is not certified merely because npm resolves its peers. The [four-job CI matrix](https://github.com/AllenYolk/pi-minimal-display/actions/runs/33959172541) passed on Linux/macOS with Node 22.19.0/24.12.0 at `065216d`, including packed-artifact loading. Windows and alternative Pi runtimes are not certified by this candidate.
+Only exact Pi 0.85.0 is accepted by the runtime gate. A future Pi version is not certified merely because npm resolves its peers. The [four-job CI matrix](https://github.com/AllenYolk/pi-minimal-display/actions/runs/33959587401) passed on Linux/macOS with Node 22.19.0/24.12.0 at reviewed commit `bc3c8b2`, including packed-artifact loading. Windows and alternative Pi runtimes are not certified by this candidate.
