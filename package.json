@@ -6,9 +6,9 @@
   "type": "module",
   "license": "MIT",
   "repository": { "type": "git", "url": "git+https://github.com/AllenYolk/pi-minimal-display.git" },
-  "files": ["dist", "README.md", "LICENSE"],
-  "exports": "./dist/index.js",
-  "pi": { "extensions": ["./dist/index.js"] },
+  "files": ["src", "README.md", "LICENSE"],
+  "exports": "./src/index.ts",
+  "pi": { "extensions": ["./src/index.ts"] },
   "keywords": ["pi-package", "pi", "tool-rendering"],
   "engines": { "node": ">=22.19.0" },
   "scripts": {
