@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { Container, Text, visibleWidth } from '@earendil-works/pi-tui';
+import { Container, Text, MouseRegion, visibleWidth } from '@earendil-works/pi-tui';
 import { ToolExecutionComponent, UserMessageComponent, AssistantMessageComponent, SkillInvocationMessageComponent, createBashToolDefinition, initTheme } from '@earendil-works/pi-coding-agent';
 import * as Pi from '@earendil-works/pi-coding-agent';
 import * as Tui from '@earendil-works/pi-tui';
@@ -47,6 +47,68 @@ test('a turn groups mixed calls, native expansion retains details, disposal rest
     assert.match(transcript.render(80).join('\n'), /echo first/);
   } finally { patch.dispose(); }
   assert.equal(Container.prototype.render, before);
+});
+
+test('preexisting presentation-only wrappers are rejected without changing their owner', () => {
+  const original = Container.prototype.render;
+  function wrapper(width) { return original.call(this, width); }
+  Container.prototype.render = wrapper;
+  let patch;
+  try {
+    const messages = [];
+    patch = installPresentation(config, '0.85.0', value => messages.push(value));
+    assert.equal(patch.enabled, false);
+    assert.equal(Container.prototype.render, wrapper);
+    assert.match(messages[0], /modified|conflict|certified/i);
+  } finally { patch?.dispose(); Container.prototype.render = original; }
+});
+
+test('image-only user messages in the session split groups even without a visible user card', () => {
+  const session = Pi.SessionManager.inMemory(process.cwd());
+  session.appendMessage({ role: 'user', content: [{ type: 'image', data: 'fixture', mimeType: 'image/png' }], timestamp: 1 });
+  session.appendMessage({ role: 'assistant', content: [{ type: 'toolCall', id: 'a', name: 'bash', arguments: {} }], timestamp: 2 });
+  session.appendMessage({ role: 'user', content: [{ type: 'image', data: 'fixture', mimeType: 'image/png' }], timestamp: 3 });
+  session.appendMessage({ role: 'assistant', content: [{ type: 'toolCall', id: 'b', name: 'bash', arguments: {} }], timestamp: 4 });
+  const patch = install(config, '0.85.0', () => {}, { pi: Pi, tui: Tui, session });
+  try {
+    const transcript = new Container();
+    transcript.addChild(tool('bash', 'a', 'A'));
+    transcript.addChild(tool('bash', 'b', 'B'));
+    const rendered = transcript.render(80).join('\n');
+    assert.doesNotMatch(rendered, /bash ×2/);
+    assert.equal((rendered.match(/bash ×1/g) ?? []).length, 2);
+  } finally { patch.dispose(); }
+});
+
+test('existing thinking is hidden on the next render, then restored on disposal', () => {
+  const message = { role: 'assistant', content: [{ type: 'thinking', thinking: 'EARLIER THINKING' }], stopReason: 'stop' };
+  const component = new AssistantMessageComponent(message);
+  const patch = installPresentation(config, '0.85.0', () => {});
+  try { assert.doesNotMatch(component.render(80).join('\n'), /EARLIER THINKING/); }
+  finally { patch.dispose(); }
+  assert.match(component.render(80).join('\n'), /EARLIER THINKING/);
+});
+
+test('new members of an expanded group and native-hidden result blocks remain inspectable', () => {
+  const patch = installPresentation(config, '0.85.0', () => {});
+  try {
+    const transcript = new Container();
+    const first = tool('bash', 'first', 'FIRST');
+    first.setExpanded(true);
+    transcript.addChild(first);
+    const read = tool('read', 'later', 'LATER READ', Pi.createReadToolDefinition(process.cwd()));
+    transcript.addChild(read);
+    const write = tool('write', 'write', 'WRITE SUCCESS TEXT', Pi.createWriteToolDefinition(process.cwd()));
+    write.updateResult({ content: [{ type: 'text', text: 'WRITE SUCCESS TEXT' }, { type: 'text', text: 'SECOND TEXT BLOCK' }], details: { marker: 'RETAINED DETAILS' }, isError: false });
+    transcript.addChild(write);
+    const expanded = transcript.render(80).join('\n');
+    assert.match(expanded, /LATER READ/);
+    assert.match(expanded, /WRITE SUCCESS TEXT/);
+    assert.match(expanded, /SECOND TEXT BLOCK/);
+    assert.match(expanded, /RETAINED DETAILS/);
+    write.result.content[1].text = 'UPDATED TEXT BLOCK';
+    assert.match(transcript.render(80).join('\n'), /UPDATED TEXT BLOCK/);
+  } finally { patch.dispose(); }
 });
 
 test('a rendering-adapter fault restores native content and reports only once', () => {
@@ -174,9 +236,26 @@ test('thinking visibility and streaming survive disable and repeated installatio
       assert.doesNotMatch(component.render(80).join('\n'), /PRIVATE THOUGHT|Thinking/);
       assert.match(component.render(80).join('\n'), /PUBLIC TEXT/);
       patch.dispose();
-      component.invalidate();
       assert.match(component.render(80).join('\n'), /PRIVATE THOUGHT/);
     } finally { patch.dispose(); }
   }
   assert.equal(JSON.stringify(message), serialized);
+});
+
+test('expanded native controls receive their original mouse events', () => {
+  let clicks = 0;
+  const definition = { ...bash, renderCall: () => new Text('native call', 0, 0), renderResult: () => new MouseRegion(new Text('NATIVE BUTTON', 0, 0), () => { clicks++; return { handled: true }; }) };
+  const patch = installPresentation(config, '0.85.0', () => {});
+  try {
+    const transcript = new Container();
+    const call = tool('bash', 'button', '', definition);
+    call.setExpanded(true);
+    transcript.addChild(call);
+    const lines = transcript.render(80);
+    const y = lines.findIndex(line => line.includes('NATIVE BUTTON'));
+    assert.ok(y >= 0);
+    transcript.handleMouse({ type: 'click', button: 'left', x: 2, y, screenX: 2, screenY: y, width: 80, height: lines.length });
+    assert.equal(clicks, 1);
+    assert.equal(call.expanded, true);
+  } finally { patch.dispose(); }
 });

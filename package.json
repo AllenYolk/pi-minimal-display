@@ -1,7 +1,7 @@
 {
   "name": "@allenyolk/pi-minimal-display",
   "version": "0.1.0-rc.1",
-  "private": true,
+  "publishConfig": { "access": "public" },
   "description": "Compact, expandable Pi tool cards with reversible presentation patches.",
   "type": "module",
   "license": "MIT",
@@ -15,7 +15,8 @@
     "build": "tsc",
     "typecheck": "tsc --noEmit",
     "test": "npm run build && node --test test/*.test.mjs",
-    "check": "npm run typecheck && npm test"
+    "check": "npm run typecheck && npm test",
+    "benchmark": "npm run build && node test/benchmark.mjs"
   },
   "peerDependencies": {
     "@earendil-works/pi-coding-agent": "0.85.0",

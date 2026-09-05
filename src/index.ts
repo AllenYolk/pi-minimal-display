@@ -10,7 +10,7 @@ export default function minimalDisplay(pi: Pi.ExtensionAPI): void {
   pi.on('session_start', (_event, ctx) => {
     presentation?.dispose();
     presentation = undefined;
-    if (!ctx.hasUI) return;
+    if (ctx.mode !== 'tui' || !ctx.hasUI) return;
     const report = (message: string) => { status = message; ctx.ui.notify(`pi-minimal-display: ${message}`, 'warning'); };
     if (Pi.VERSION !== CERTIFIED_PI_VERSION) {
       report(`Pi ${Pi.VERSION} is not certified (expected ${CERTIFIED_PI_VERSION}); using native display`);
@@ -24,7 +24,7 @@ export default function minimalDisplay(pi: Pi.ExtensionAPI): void {
     const { config, diagnostic } = loadConfig(Pi.getAgentDir());
     if (!config) { report(diagnostic!); return; }
     try {
-      presentation = installPresentation(config, Pi.VERSION, report, { pi: Pi, tui: Tui });
+      presentation = installPresentation(config, Pi.VERSION, report, { pi: Pi, tui: Tui, session: ctx.sessionManager });
       if (presentation.enabled) status = `Active on Pi ${Pi.VERSION}; grouping=${config.grouping}; hideThinking=${config.hideThinking}`;
     } catch (error) {
       presentation?.dispose();

@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { createHash } from 'node:crypto';
 import { writeFileSync, mkdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { Container } from '@earendil-works/pi-tui';
@@ -6,6 +7,7 @@ import { ToolExecutionComponent, UserMessageComponent, AssistantMessageComponent
 
 export default function probe(pi: ExtensionAPI) {
   const baseline = Container.prototype.render;
+  const fingerprints = [Container.prototype.render, Container.prototype.handleMouse, AssistantMessageComponent.prototype.updateContent, AssistantMessageComponent.prototype.render].map(method => createHash('sha256').update(Function.prototype.toString.call(method)).digest('hex'));
   const key = Symbol.for('pi-minimal-display/cli-probe');
   const store = globalThis as typeof globalThis & { [key]?: { round: number; baseline: typeof baseline } };
   const run = store[key] ??= { round: 0, baseline };
@@ -48,7 +50,7 @@ export default function probe(pi: ExtensionAPI) {
           process.stdout.write('\nPI_DISPLAY_PROBE_READY\n');
           return;
         }
-        writeFileSync(destination, JSON.stringify({ passed: true, reloads: run.round, groupedCalls: calls.length, execution: result.content, collapsed }));
+        writeFileSync(destination, JSON.stringify({ passed: true, fingerprints, reloads: run.round, groupedCalls: calls.length, execution: result.content, collapsed }));
       } catch (error) {
         writeFileSync(destination, JSON.stringify({ passed: false, error: String(error) }));
       }
