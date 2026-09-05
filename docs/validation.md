@@ -1,14 +1,14 @@
 # Validation
 
-Current trial candidate: rc.5 development. Native-only thinking visibility is tracked in issue #18; the current installed rc.4 trial is intentionally unchanged. Thinking display follows Pi's native `hideThinkingBlock` setting; the plugin has no corresponding setting. Older version evidence below is historical, not certification of later code.
+Current trial candidate: rc.6 development; the current installed trial is rc.5. Thinking display follows Pi's native `hideThinkingBlock` setting; the plugin has no corresponding setting. Older version evidence below is historical, not certification of later code.
 
 ## Native thinking visibility
 
-Rollout diagnosis confirmed that MiniMax-M3 is reasoning-capable and the latest local spikingjelly-v2 rollout contains non-empty `thinking` blocks. The prior apparent conflict came from rc.4's plugin-level `hideThinking` default overriding Pi's native `hideThinkingBlock: false`. This change removes that field and the Assistant update/render patch entirely. The plugin now observes the native Assistant transcript state only; visible thinking intentionally splits adjacent tool groups and can reduce compression. Use Pi's native settings to choose visibility.
+Rollout diagnosis confirmed that MiniMax-M3 is reasoning-capable and the latest local spikingjelly-v2 rollout contains non-empty `thinking` blocks. The prior apparent conflict came from rc.4's plugin-level `hideThinking` default overriding Pi's native `hideThinkingBlock: false`. Issue #18 removed that field; issue #20 now uses only the native Assistant component state to omit its hidden placeholder. Hidden-only thinking no longer splits adjacent managed tools, while visible thinking and assistant text remain boundaries.
 
 For migration, an old boolean `hideThinking` key is validated and ignored rather than copied into the new runtime config; it no longer controls rendering.
 
-39 local checks pass after removing the Assistant presentation patch and reducing certified host methods to the container and expansion-status seam. Native-visible and native-hidden Assistant components both remain unchanged under plugin installation; no plugin-owned thinking state or restoration path remains. The dedicated GC regression also covers a later status wrapper retaining the temporary adapter.
+40 local checks pass. The rc.6 regression covers hidden-only merging, mixed hidden-thinking/visible-text ordering, runtime native visibility changes, existing components, streaming and disposal restoration. The adapter patches certified Assistant update/render methods but adds no visibility state and never changes session/model content. On the same synthetic 320-call workload, rc.5 → rc.6 compact medians were 0.854 → 0.704 ms collapsed and 1.855 → 2.091 ms expanded; displayed lines remained 320/5,560. These sub-millisecond run-to-run differences do not support a performance claim.
 
 ## Silent native expansion
 

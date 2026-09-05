@@ -88,6 +88,12 @@ try {
   assert.match(collapsed, /REPLAY THINKING/);
   assert.doesNotMatch(collapsed, /REPLAY_OUTPUT|SECOND_TURN/);
   assert.deepEqual(images(collapsed), []);
+  mode.hideThinkingBlock = true;
+  mode.updateThinkingBlockVisibility();
+  assert.doesNotMatch(render(), /REPLAY THINKING|Thinking\.\.\./);
+  mode.hideThinkingBlock = false;
+  mode.updateThinkingBlockVisibility();
+  assert.match(render(), /REPLAY THINKING/);
   mode.defaultEditor.handleInput(expandInput);
   const expanded = render();
   assert.doesNotMatch(expanded, /Tool output: (?:expanded|collapsed)/);

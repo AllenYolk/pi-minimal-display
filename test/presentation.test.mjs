@@ -154,6 +154,18 @@ test('a preexisting expansion wrapper is rejected without changing its owner', (
   } finally { Pi.InteractiveMode.prototype.setToolsExpanded = original; }
 });
 
+test('a preexisting Assistant wrapper is rejected without changing its owner', () => {
+  const original = AssistantMessageComponent.prototype.updateContent;
+  function wrapper(...args) { return original.apply(this, args); }
+  AssistantMessageComponent.prototype.updateContent = wrapper;
+  try {
+    const messages = [];
+    assert.equal(installPresentation(config, Pi.VERSION, value => messages.push(value)), undefined);
+    assert.equal(AssistantMessageComponent.prototype.updateContent, wrapper);
+    assert.match(messages[0], /modified|certified/i);
+  } finally { AssistantMessageComponent.prototype.updateContent = original; }
+});
+
 test('five calls, commentary, then three calls retain their relative positions', () => {
   const dispose = installPresentation(config, Pi.VERSION, () => {});
   try {
@@ -195,7 +207,7 @@ test('image-only user messages in the session split groups even without a visibl
   } finally { dispose(); }
 });
 
-test('native hidden thinking, streamed narrative, native tools and host warnings stop grouping', () => {
+test('native hidden thinking is omitted and does not split groups', () => {
   const dispose = installPresentation(config, Pi.VERSION, () => {});
   try {
     const transcript = new Container();
@@ -205,9 +217,15 @@ test('native hidden thinking, streamed narrative, native tools and host warnings
     assistant.updateContent({ role: 'assistant', content: [{ type: 'thinking', thinking: 'HIDDEN NARRATIVE' }], stopReason: 'stop' }, true);
     let output = transcript.render(100).join('\n');
     assert.doesNotMatch(output, /HIDDEN NARRATIVE/);
-    assert.equal((output.match(/bash ×1/g) ?? []).length, 2);
-    assistant.updateContent({ role: 'assistant', content: [{ type: 'text', text: 'STREAMED NARRATIVE' }], stopReason: 'stop' }, true);
-    assert.match(transcript.render(100).join('\n'), /bash ×1[\s\S]*STREAMED NARRATIVE[\s\S]*bash ×1/);
+    assert.doesNotMatch(output, /Thinking\.\.\./);
+    assert.match(output, /bash ×2/);
+    assistant.updateContent({ role: 'assistant', content: [{ type: 'thinking', thinking: 'HIDDEN NARRATIVE' }, { type: 'text', text: 'STREAMED NARRATIVE' }], stopReason: 'stop' }, true);
+    output = transcript.render(100).join('\n');
+    assert.doesNotMatch(output, /HIDDEN NARRATIVE|Thinking\.\.\./);
+    assert.match(output, /bash ×1[\s\S]*STREAMED NARRATIVE[\s\S]*bash ×1/);
+    assistant.setHideThinkingBlock(false);
+    assistant.updateContent({ role: 'assistant', content: [{ type: 'thinking', thinking: 'VISIBLE NARRATIVE' }], stopReason: 'stop' }, true);
+    assert.match(transcript.render(100).join('\n'), /bash ×1[\s\S]*VISIBLE NARRATIVE[\s\S]*bash ×1/);
     transcript.children[1] = tool('custom', 'native', 'NATIVE RESULT');
     assert.match(transcript.render(100).join('\n'), /bash ×1[\s\S]*NATIVE RESULT[\s\S]*bash ×1/);
     transcript.children[1] = new AssistantMessageComponent({ role: 'assistant', content: [], stopReason: 'length' });
@@ -216,7 +234,7 @@ test('native hidden thinking, streamed narrative, native tools and host warnings
   } finally { dispose(); }
 });
 
-test('thinking visibility follows native config without a plugin patch', () => {
+test('thinking omission follows native component state and disposal restores native output', () => {
   const message = { role: 'assistant', content: [{ type: 'thinking', thinking: 'EARLIER THINKING' }], stopReason: 'stop' };
   const originalUpdate = AssistantMessageComponent.prototype.updateContent;
   const originalRender = AssistantMessageComponent.prototype.render;
@@ -224,12 +242,13 @@ test('thinking visibility follows native config without a plugin patch', () => {
     const component = new AssistantMessageComponent(message, hide);
     const dispose = installPresentation(config, '0.85.0', () => {});
     try {
-      assert.equal(AssistantMessageComponent.prototype.updateContent, originalUpdate);
-      assert.equal(AssistantMessageComponent.prototype.render, originalRender);
       const output = component.render(80).join('\n');
-      if (hide) assert.doesNotMatch(output, /EARLIER THINKING/);
+      if (hide) assert.doesNotMatch(output, /EARLIER THINKING|Thinking\.\.\./);
       else assert.match(output, /EARLIER THINKING/);
     } finally { dispose(); }
+    assert.equal(AssistantMessageComponent.prototype.updateContent, originalUpdate);
+    assert.equal(AssistantMessageComponent.prototype.render, originalRender);
+    if (hide) assert.match(component.render(80).join('\n'), /Thinking\.\.\./);
   }
 });
 

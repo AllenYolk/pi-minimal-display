@@ -40,6 +40,9 @@ export default function probe(pi: ExtensionAPI) {
         const message = { role: 'assistant', content: [{ type: 'thinking', thinking: 'hidden thinking' }, { type: 'text', text: 'visible text' }], stopReason: 'stop' } as const;
         const component = new AssistantMessageComponent(message as never);
         assert.match(component.render(80).join('\n'), /hidden thinking/);
+        const hidden = new AssistantMessageComponent(message as never, true);
+        assert.doesNotMatch(hidden.render(80).join('\n'), /hidden thinking|Thinking\.\.\./);
+        assert.match(hidden.render(80).join('\n'), /visible text/);
         const reloads = Number(process.env.PI_DISPLAY_PROBE_RELOADS ?? 0);
         if (run.round < reloads) {
           run.round++;

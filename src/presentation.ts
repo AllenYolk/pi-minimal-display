@@ -21,12 +21,17 @@ type InteractiveState = {
   setToolsExpanded(expanded: boolean): void;
   ui: { requestRender(): void };
 };
+type AssistantState = {
+  hideThinkingBlock: boolean;
+  lastMessage?: Parameters<AssistantMessageComponent['updateContent']>[0];
+};
 const stateOf = (tool: ToolExecutionComponent) => tool as unknown as ToolState;
+const assistantStateOf = (message: AssistantMessageComponent) => message as unknown as AssistantState;
 const ownerKey = Symbol.for('@allenyolk/pi-minimal-display/owner');
-// Published 0.85.0 SDK and bundled CLI methods: Container render/mouse, Interactive expansion/status.
+// Published 0.85.0 SDK and bundled CLI methods: Container render/mouse, Assistant update/render, Interactive expansion/status.
 const certifiedMethods = new Set([
-  '3f8010cdede34c16dfa87b5544057cce2e38fe948c62b78998fd3630e2ad3311:702b6e2da7967989f0cf08e068f1405aede2ae529f48ec45f33402f83c3213d4:2a09d118eaceb306f5fee34efd7311dd2f17b89b704ee591e4872a7476b18728:94a9c04043b5d37a132d63bb6ef1d40e1d51f5a430799e2eefee096d3289ee99',
-  '1bd938ca53360d12d6dcea0c955a5c4346f00eb2d6b67cec2dcf8a8911535b92:9316e9def7d88924b6e4f5c106d7dd9b54d217a4f59890b4ce3260ab3a571259:d85be3dbecebd5e1573f709505d2a7f1a715c86b8f4e22a1b738f9732caa2a4b:388a1f191e3725bf04113c7a2523af234f51730328440410a7764feaa7e45b18',
+  '3f8010cdede34c16dfa87b5544057cce2e38fe948c62b78998fd3630e2ad3311:702b6e2da7967989f0cf08e068f1405aede2ae529f48ec45f33402f83c3213d4:fd0c8ba64d8a398fce1ff73d93e43bc70b66ba50e06491ddeb4826c37992a302:b32d71cf32320dd71d4c6edc6a606da7340b6635bf05e2368ba5ef43bbdc6e50:2a09d118eaceb306f5fee34efd7311dd2f17b89b704ee591e4872a7476b18728:94a9c04043b5d37a132d63bb6ef1d40e1d51f5a430799e2eefee096d3289ee99',
+  '1bd938ca53360d12d6dcea0c955a5c4346f00eb2d6b67cec2dcf8a8911535b92:9316e9def7d88924b6e4f5c106d7dd9b54d217a4f59890b4ce3260ab3a571259:ac42dc0addeaf9fb23d004b1e7ea9fe41ed770a8c7077adbcb8c4af950d22a78:706329ba0e6e22acb726e6d444f23754f16fcce5cc021b7574a44b2480e2ec71:d85be3dbecebd5e1573f709505d2a7f1a715c86b8f4e22a1b738f9732caa2a4b:388a1f191e3725bf04113c7a2523af234f51730328440410a7764feaa7e45b18',
 ]);
 
 function displayText(value: unknown): string {
@@ -54,15 +59,20 @@ export function installPresentation(config: Config, version: unknown, report: (m
   const descriptor = Object.getOwnPropertyDescriptor(proto, 'render');
   const originalMouse = proto.handleMouse;
   const mouseDescriptor = Object.getOwnPropertyDescriptor(proto, 'handleMouse');
+  const assistantProto = AssistantMessageComponent.prototype;
+  const thinkingDescriptor = Object.getOwnPropertyDescriptor(assistantProto, 'updateContent');
+  const originalUpdate = assistantProto.updateContent;
+  const assistantRenderDescriptor = Object.getOwnPropertyDescriptor(assistantProto, 'render');
+  const originalAssistantRender = assistantProto.render;
   const interactiveProto = InteractiveMode.prototype as unknown as InteractiveState;
   const expansionDescriptor = Object.getOwnPropertyDescriptor(interactiveProto, 'setToolsExpanded');
   const originalSetToolsExpanded = interactiveProto.setToolsExpanded;
   const originalShowStatus = interactiveProto.showStatus;
-  if (typeof originalRender !== 'function' || !descriptor?.writable || !mouseDescriptor?.writable || typeof originalMouse !== 'function' || !Object.isExtensible(proto) || typeof originalSetToolsExpanded !== 'function' || !expansionDescriptor?.writable || typeof originalShowStatus !== 'function' || !Object.isExtensible(interactiveProto)) {
+  if (typeof originalRender !== 'function' || !descriptor?.writable || !mouseDescriptor?.writable || typeof originalMouse !== 'function' || !Object.isExtensible(proto) || typeof originalUpdate !== 'function' || !thinkingDescriptor?.writable || !assistantRenderDescriptor?.writable || typeof originalAssistantRender !== 'function' || !Object.isExtensible(assistantProto) || typeof originalSetToolsExpanded !== 'function' || !expansionDescriptor?.writable || typeof originalShowStatus !== 'function' || !Object.isExtensible(interactiveProto)) {
     report('Pi container rendering is incompatible; using native display');
     return;
   }
-  const signature = [originalRender, originalMouse, originalSetToolsExpanded, originalShowStatus].map(method => createHash('sha256').update(Function.prototype.toString.call(method)).digest('hex')).join(':');
+  const signature = [originalRender, originalMouse, originalUpdate, originalAssistantRender, originalSetToolsExpanded, originalShowStatus].map(method => createHash('sha256').update(Function.prototype.toString.call(method)).digest('hex')).join(':');
   if (!certifiedMethods.has(signature)) {
     report('Pi presentation methods are modified or not certified; using native display');
     return;
@@ -70,10 +80,31 @@ export function installPresentation(config: Config, version: unknown, report: (m
   let active: Config | undefined = config;
   let session = host.session;
   let ui: typeof host.ui | undefined = host.ui;
+  const thinkingComponents = new Set<WeakRef<AssistantMessageComponent>>();
+  const seenThinking = new WeakSet<AssistantMessageComponent>();
   const modeFor = (tool: ToolExecutionComponent, settings: Config) => {
     const name = stateOf(tool).toolName;
     return Object.hasOwn(settings.tools, name) ? settings.tools[name]! : settings.default;
   };
+
+  function updateContent(this: AssistantMessageComponent, ...args: Parameters<AssistantMessageComponent['updateContent']>) {
+    const [message, streaming] = args;
+    if (!active || !assistantStateOf(this).hideThinkingBlock) return originalUpdate.apply(this, args);
+    if (!seenThinking.has(this)) {
+      seenThinking.add(this);
+      thinkingComponents.add(new WeakRef(this));
+    }
+    try {
+      return originalUpdate.call(this, { ...message, content: message.content.filter(block => block.type !== 'thinking') }, streaming);
+    } finally {
+      assistantStateOf(this).lastMessage = message;
+    }
+  }
+
+  function renderAssistant(this: AssistantMessageComponent, width: number) {
+    if (active && assistantStateOf(this).hideThinkingBlock && !seenThinking.has(this) && assistantStateOf(this).lastMessage) this.invalidate();
+    return originalAssistantRender.call(this, width);
+  }
 
   function group(members: ToolExecutionComponent[]): Component {
     const nativeView = new Container();
@@ -168,10 +199,11 @@ export function installPresentation(config: Config, version: unknown, report: (m
           const message = child instanceof AssistantMessageComponent
             ? (child as unknown as { lastMessage?: Parameters<AssistantMessageComponent['updateContent']>[0] }).lastMessage
             : undefined;
-          // Tool-only assistant placeholders are empty; narrative is a boundary even when hidden.
+          const thinkingHidden = child instanceof AssistantMessageComponent && assistantStateOf(child).hideThinkingBlock;
+          // Tool-only and natively hidden-thinking assistant components have no visible output.
           const emptyAssistant = child instanceof AssistantMessageComponent
             && (!message || !['length', 'error', 'aborted'].includes(message.stopReason))
-            && !message?.content.some(block => (block.type === 'text' && block.text.trim()) || (block.type === 'thinking' && block.thinking.trim()));
+            && !message?.content.some(block => (block.type === 'text' && block.text.trim()) || (!thinkingHidden && block.type === 'thinking' && block.thinking.trim()));
           if (!emptyAssistant) members = undefined;
           projected.push(child);
         } else {
@@ -226,13 +258,19 @@ export function installPresentation(config: Config, version: unknown, report: (m
     report = () => {};
     if (proto.render === render) Object.defineProperty(proto, 'render', descriptor);
     if (proto.handleMouse === handleMouse) Object.defineProperty(proto, 'handleMouse', mouseDescriptor);
+    if (assistantProto.updateContent === updateContent) Object.defineProperty(assistantProto, 'updateContent', thinkingDescriptor);
+    if (assistantProto.render === renderAssistant) Object.defineProperty(assistantProto, 'render', assistantRenderDescriptor);
     if (interactiveProto.setToolsExpanded === setToolsExpanded) Object.defineProperty(interactiveProto, 'setToolsExpanded', expansionDescriptor);
     if (proto[ownerKey] === dispose) delete proto[ownerKey];
+    for (const reference of thinkingComponents) reference.deref()?.invalidate();
+    thinkingComponents.clear();
   };
   try {
     Object.defineProperty(proto, ownerKey, { value: dispose, configurable: true });
     proto.render = render;
     proto.handleMouse = handleMouse;
+    assistantProto.updateContent = updateContent;
+    assistantProto.render = renderAssistant;
     interactiveProto.setToolsExpanded = setToolsExpanded;
   } catch (error) {
     const notify = report;

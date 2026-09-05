@@ -4,9 +4,9 @@ Status: Review direction approved by the owner on 2026-09-05. The authoritative 
 
 The owner selected [silent native expansion (#16)](https://github.com/AllenYolk/pi-minimal-display/issues/16): preserve Pi's native two-state setter and repaint, but suppress only the exact mode notification emitted synchronously by that action. Do not route it to Starship or globally filter matching transcript text.
 
-The owner subsequently removed the plugin-owned thinking switch: Pi's native `hideThinkingBlock` is the single visibility authority. The plugin uses the native Assistant component state for group boundaries and documents that visible thinking splits groups and reduces compression.
+The owner subsequently removed the plugin-owned thinking switch: Pi's native `hideThinkingBlock` is the single visibility authority. [Issue #20](https://github.com/AllenYolk/pi-minimal-display/issues/20) further requires the compact projection to omit Pi's hidden-thinking placeholder and cross hidden-only thinking components, while visible thinking and assistant text remain boundaries.
 
-Issue #18 applies this rule to the implementation: remove the plugin `hideThinking` field and Assistant filtering/restoration patch. A legacy boolean may be accepted and ignored during migration, but cannot affect rendering.
+Issue #18 removes the plugin `hideThinking` field. Issue #20 supersedes its prohibition on Assistant presentation adaptation: the adapter may filter only when the component's native `hideThinkingBlock` state says thinking is hidden, and must restore native presentation on disposal. A legacy plugin boolean may be accepted and ignored during migration, but cannot affect rendering.
 
 The approved [native-card/automatic-mode plan (#14)](https://github.com/AllenYolk/pi-minimal-display/issues/14) changes ordinary-tool defaults to count-only and retains exact native exclusions for known interactive tools. Summaries use native theme/padding and two lines; native global expansion is the only mode state. Entering sessions starts minimal, while reload preserves global expansion. No command is required for first paint.
 
@@ -34,7 +34,7 @@ The previous handoff is input to this review, not proof that its architecture or
 5. **Supported minor and tested release differ.** Initially certify the exact installed Pi release (currently 0.85.0). A broad `0.85.x` peer range alone cannot establish compatibility with future patch releases. Record the tested version set and structural assumptions; default unknown hosts to native display.
 6. **Patch ownership needs a teardown protocol.** Each runtime instance owns its installed wrappers. Installation is atomic: validate before changing methods and roll back a partial failure. Disposing an older instance must not overwrite another extension's later wrapper. After disposal, stale wrappers must no longer suppress content or retain session state.
 7. **Errors are visible without relying only on color.** A collapsed card must identify a failed operation in text and retain an expansion path. Pending work must not mask an already failed member. Cancellation and rejected execution need defined terminal states.
-8. **Thinking visibility is native-only.** Use Pi's supported `hideThinkingBlock` setting. This plugin must not expose a duplicate visibility option or rewrite thinking content; its group projection observes the native Assistant component and keeps visible thinking as a boundary.
+8. **Thinking visibility is native-only.** Use Pi's supported `hideThinkingBlock` setting. This plugin must not expose a duplicate visibility option or rewrite session/model content. Its compact projection omits the native hidden placeholder and crosses hidden-only thinking; visible thinking remains a boundary.
 9. **Open-source provenance requires a decision.** compact-display declares ISC in package metadata but includes a GPL-3.0 LICENSE. Record this mismatch before any code reuse. Plan an original implementation; any copied source needs an explicit provenance/license review before distribution.
 
 ## Proposed engineering gates
