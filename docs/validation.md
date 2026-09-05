@@ -1,6 +1,12 @@
 # Validation
 
-Current trial candidate: 0.1.0-rc.3. The native-card and automatic-mode update is tracked in [issue #14](https://github.com/AllenYolk/pi-minimal-display/issues/14). The owner approved implementation and trial promotion after checks/review, not npm publication. Older version evidence below is historical, not certification of later code.
+Current trial candidate: 0.1.0-rc.4. The silent-toggle update is tracked in [issue #16](https://github.com/AllenYolk/pi-minimal-display/issues/16). The owner selected removal of the redundant transcript notification, not Starship/footer integration or npm publication. Older version evidence below is historical, not certification of later code.
+
+## Silent native expansion
+
+The adapter keeps Pi's certified `setToolsExpanded` implementation and temporarily routes only its exact synchronous `Tool output: expanded/collapsed` call away from `showStatus`, then requests the render that notification previously triggered. It restores any instance-local status method in `finally`; other statuses during the action and identical status text outside it remain visible. The setter wrapper is fingerprint-gated, owner-aware, reversible and inert after disposal. There is no transcript string filter, key interception, Starship coupling, timer or new setting.
+
+38 local checks pass. Real Ctrl+O/custom Ctrl+G and ten CLI reloads toggle/repaint without either mode line. A later same-turn ReadSeek call remains in the adjacent group, proving the removed line no longer creates a boundary. Failure restoration, preexisting/later wrappers, first paint, package loading, images, native expansion and session/UI GC remain covered. The same public 391-call benchmark renders 2,983/14,889 collapsed/expanded lines; local native → plugin medians were 2.749 → 1.928 ms collapsed and 3.659 → 4.123 ms expanded. The toggle path is not part of this render-only benchmark, so no performance claim follows. Exact independent review, CI and deployment evidence is recorded in issue #16 before promotion.
 
 ## Native cards and automatic minimal
 

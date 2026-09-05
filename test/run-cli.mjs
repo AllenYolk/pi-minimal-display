@@ -15,6 +15,7 @@ export function runCliProbe(entry, reloads = 0, profile) {
   });
   assert.equal(result.error, undefined, result.error?.message);
   assert.equal(result.status, 0, result.stderr);
+  assert.doesNotMatch(result.stdout, /Tool output: (?:expanded|collapsed)/);
   const report = JSON.parse(readFileSync(resultFile, 'utf8'));
   assert.equal(report.passed, true, report.error);
   assert.equal(report.groupedCalls, 2);

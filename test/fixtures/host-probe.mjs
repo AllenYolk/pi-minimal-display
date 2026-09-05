@@ -73,6 +73,7 @@ try {
   assert.ok(nativeImages[0].includes(png));
   assert.match(native, /REPLAY THINKING/);
   mode.defaultEditor.handleInput(expandInput);
+  mode.rebuildChatFromMessages();
   const before = snapshot();
   dispose = installPresentation(loadConfig(profile).config, Pi.VERSION, message => diagnostics.push(message), { pi: Pi, tui: Tui, ui: mode.createExtensionUIContext(), session: manager });
   assert.equal(typeof dispose, 'function', diagnostics.join('\n'));
@@ -88,6 +89,8 @@ try {
   assert.deepEqual(images(collapsed), []);
   mode.defaultEditor.handleInput(expandInput);
   const expanded = render();
+  assert.doesNotMatch(expanded, /Tool output: (?:expanded|collapsed)/);
+  assert.equal(Object.hasOwn(mode, 'showStatus'), false);
   assert.doesNotMatch(expanded, /Retained data/);
   assert.match(expanded, /REPLAY_OUTPUT/);
   assert.match(expanded, /RETAINED IMAGE/);
@@ -95,6 +98,7 @@ try {
   assert.equal(snapshot(), before, 'rendering and key dispatch must not change saved/model data');
 
   mode.defaultEditor.handleInput(expandInput);
+  assert.doesNotMatch(render(), /Tool output: (?:expanded|collapsed)/);
   const lines = mode.chatContainer.render(100);
   const y = lines.findIndex(line => line.includes('bash ×1 read ×1'));
   assert.ok(y >= 0);
@@ -104,6 +108,10 @@ try {
   assert.match(render(), /SECOND_TURN/, 'global expansion includes groups not opened by the mouse');
   mode.defaultEditor.handleInput(expandInput);
   assert.doesNotMatch(render(), /REPLAY_OUTPUT|SECOND_TURN/);
+  assert.doesNotMatch(render(), /Tool output: (?:expanded|collapsed)/);
+  await mode.handleEvent({ type: 'tool_execution_start', toolCallId: 'after-toggle', toolName: 'readSeek_grep', args: { pattern: 'fixture' } });
+  await mode.handleEvent({ type: 'tool_execution_end', toolCallId: 'after-toggle', toolName: 'readSeek_grep', result: { content: [text('AFTER_TOGGLE')] }, isError: false });
+  assert.match(render(), /bash ×1 readSeek_grep ×1/, 'toggle status must not split adjacent tool activity');
   mode.chatContainer.handleMouse({ type: 'click', button: 'left', x: 2, y, screenX: 2, screenY: y, width: 100, height: mode.chatContainer.render(100).length });
   const nativeLines = mode.chatContainer.render(100);
   const nativeY = nativeLines.findIndex(line => line.includes('printf REPLAY_OUTPUT'));
@@ -172,7 +180,38 @@ try {
   mode.defaultEditor.handleInput(expandInput);
   assert.match(render(), /FAILURE DETAIL/);
   assert.match(render(), /Operation aborted/);
+  const statusRelay = { render: () => [], invalidate() {}, setExpanded() { mode.showStatus('UNRELATED STATUS'); } };
+  mode.chatContainer.children.unshift(statusRelay);
+  mode.defaultEditor.handleInput(expandInput);
+  assert.match(render(), /UNRELATED STATUS/, 'other status calls during expansion remain visible');
+  assert.doesNotMatch(render(), /Tool output: (?:expanded|collapsed)/);
+  mode.chatContainer.removeChild(statusRelay);
+  assert.equal(Object.hasOwn(mode, 'showStatus'), false);
+  mode.showStatus('Tool output: expanded');
+  assert.match(render(), /Tool output: expanded/, 'identical status text outside the native toggle remains visible');
+  const originalStatus = mode.showStatus;
+  const failure = { render: () => [], invalidate() {}, setExpanded() { throw new Error('forced expansion failure'); } };
+  mode.chatContainer.children.unshift(failure);
+  assert.throws(() => mode.setToolsExpanded(!mode.toolOutputExpanded), /forced expansion failure/);
+  assert.equal(mode.showStatus, originalStatus);
+  assert.equal(Object.hasOwn(mode, 'showStatus'), false, 'temporary status routing is restored after failure');
+  mode.chatContainer.removeChild(failure);
+  let escapedStatus;
+  const escape = { render: () => [], invalidate() {}, setExpanded() {
+    if (escapedStatus) return;
+    const captured = mode.showStatus;
+    escapedStatus = function(message) { return captured.call(this, message); };
+    Object.defineProperty(mode, 'showStatus', { value: escapedStatus, configurable: true, writable: true });
+  } };
+  mode.chatContainer.children.unshift(escape);
+  mode.setToolsExpanded(!mode.toolOutputExpanded);
+  mode.chatContainer.removeChild(escape);
+  mode.showStatus('Tool output: collapsed');
+  assert.match(render(), /Tool output: collapsed/, 'an escaped temporary filter expires when the action returns');
   dispose();
+  mode.showStatus('Tool output: expanded');
+  assert.match(render(), /Tool output: expanded/, 'a later wrapper cannot keep filtering after disposal');
+  delete mode.showStatus;
   assert.match(render(), /REPLAY THINKING/);
   assert.match(render(), /LIVE THINKING/);
   assert.deepEqual(diagnostics, []);

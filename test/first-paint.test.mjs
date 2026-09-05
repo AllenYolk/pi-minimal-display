@@ -28,6 +28,6 @@ for (const mode of ['regular', 'fullscreen']) for (const scenario of ['fresh', '
     assert.equal(result.error, undefined, result.error?.message);
     assert.equal(result.status, 0, result.stderr + result.stdout.slice(-4000));
     assert.match(result.stdout, /FIRST_PAINT_VERIFIED/);
-    assert.doesNotMatch(result.stdout, /FIRST_PAINT_RAW_OUTPUT|Retained data/);
+    assert.doesNotMatch(result.stdout, /FIRST_PAINT_RAW_OUTPUT|Retained data|Tool output: (?:expanded|collapsed)/);
   });
 }

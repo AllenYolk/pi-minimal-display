@@ -3,11 +3,11 @@ import { createHash } from 'node:crypto';
 import { writeFileSync, mkdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { Container } from '@earendil-works/pi-tui';
-import { ToolExecutionComponent, UserMessageComponent, AssistantMessageComponent, createBashToolDefinition, getAgentDir, type ExtensionAPI } from '@earendil-works/pi-coding-agent';
+import { ToolExecutionComponent, UserMessageComponent, AssistantMessageComponent, InteractiveMode, createBashToolDefinition, getAgentDir, type ExtensionAPI } from '@earendil-works/pi-coding-agent';
 
 export default function probe(pi: ExtensionAPI) {
   const baseline = Container.prototype.render;
-  const fingerprints = [Container.prototype.render, Container.prototype.handleMouse, AssistantMessageComponent.prototype.updateContent, AssistantMessageComponent.prototype.render].map(method => createHash('sha256').update(Function.prototype.toString.call(method)).digest('hex'));
+  const fingerprints = [Container.prototype.render, Container.prototype.handleMouse, AssistantMessageComponent.prototype.updateContent, AssistantMessageComponent.prototype.render, InteractiveMode.prototype.setToolsExpanded, InteractiveMode.prototype.showStatus].map(method => createHash('sha256').update(Function.prototype.toString.call(method)).digest('hex'));
   const key = Symbol.for('pi-minimal-display/cli-probe');
   const store = globalThis as typeof globalThis & { [key]?: { round: number; baseline: typeof baseline } };
   const run = store[key] ??= { round: 0, baseline };

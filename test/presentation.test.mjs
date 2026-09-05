@@ -142,6 +142,18 @@ test('preexisting presentation-only wrappers are rejected without changing their
   } finally { dispose?.(); Container.prototype.render = original; }
 });
 
+test('a preexisting expansion wrapper is rejected without changing its owner', () => {
+  const original = Pi.InteractiveMode.prototype.setToolsExpanded;
+  function wrapper(expanded) { return original.call(this, expanded); }
+  Pi.InteractiveMode.prototype.setToolsExpanded = wrapper;
+  try {
+    const messages = [];
+    assert.equal(installPresentation(config, Pi.VERSION, value => messages.push(value)), undefined);
+    assert.equal(Pi.InteractiveMode.prototype.setToolsExpanded, wrapper);
+    assert.match(messages[0], /modified|certified/i);
+  } finally { Pi.InteractiveMode.prototype.setToolsExpanded = original; }
+});
+
 test('five calls, commentary, then three calls retain their relative positions', () => {
   const dispose = installPresentation(config, Pi.VERSION, () => {});
   try {
@@ -331,17 +343,22 @@ test('unsupported hosts stay native and old disposal preserves a later owner', (
 
 test('third-party wrapping remains intact and disposed closures become native', () => {
   const original = Container.prototype.render;
+  const originalExpansion = Pi.InteractiveMode.prototype.setToolsExpanded;
   const dispose = installPresentation(config, '0.85.0', () => {});
   const installed = Container.prototype.render;
+  const installedExpansion = Pi.InteractiveMode.prototype.setToolsExpanded;
   function thirdParty(width) { return installed.call(this, width); }
+  function thirdPartyExpansion(expanded) { return installedExpansion.call(this, expanded); }
   Container.prototype.render = thirdParty;
+  Pi.InteractiveMode.prototype.setToolsExpanded = thirdPartyExpansion;
   try {
     dispose();
     assert.equal(Container.prototype.render, thirdParty);
+    assert.equal(Pi.InteractiveMode.prototype.setToolsExpanded, thirdPartyExpansion);
     const transcript = new Container();
     transcript.addChild(tool('bash', 'visible', 'NATIVE'));
     assert.match(transcript.render(80).join('\n'), /NATIVE/);
-  } finally { Container.prototype.render = original; dispose(); }
+  } finally { Container.prototype.render = original; Pi.InteractiveMode.prototype.setToolsExpanded = originalExpansion; dispose(); }
 });
 
 test('ungrouped lines mode previews only a short display command, expansion preserves full arguments', () => {
