@@ -81,7 +81,7 @@ npm run benchmark
 npm pack --ignore-scripts
 ```
 
-`npm run check` includes type checking, configuration/component regressions, a real bundled Pi CLI probe with ten reloads, and an actual packed-artifact load. Tests use disposable directories under ignored `work/` and never alter the daily Pi profile. `@earendil-works/pi-server` is a development-only workaround for the 0.85.0 SDK's import of an undeclared server package; it is not shipped or needed by the extension.
+`npm run check` includes type checking, configuration/component regressions, real InteractiveMode replay/keyboard/mouse/image checks, a bundled Pi CLI probe with ten reloads, and an actual packed-artifact load. Tests use disposable directories under ignored `work/` and never alter the daily Pi profile. `@earendil-works/pi-server` is a development-only workaround for the 0.85.0 SDK's import of an undeclared server package; it is not shipped or needed by the extension.
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for issue, review, and release gates. The authoritative contract is [issue #1](https://github.com/AllenYolk/pi-minimal-display/issues/1).
 

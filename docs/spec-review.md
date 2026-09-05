@@ -4,7 +4,7 @@ Status: Review direction approved by the owner on 2026-09-05. The authoritative 
 
 ## Starting point
 
-This project follows the Pi Minimal Display handoff prepared on 2026-09-05. The GitHub repository is AllenYolk/pi-minimal-display. The project title is not a claimed npm package name; package publication and the final license choice remain release decisions.
+This project follows the Pi Minimal Display handoff prepared on 2026-09-05. The GitHub repository is AllenYolk/pi-minimal-display. The owner subsequently selected MIT; the candidate package is named @allenyolk/pi-minimal-display. Package publication remains a separate owner decision.
 
 Primary references:
 
