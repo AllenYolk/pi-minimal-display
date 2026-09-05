@@ -202,7 +202,7 @@ export function installPresentation(config: Config, version: unknown, report: (m
     const currentShowStatus = this.showStatus;
     let filtering = true;
     let suppressed = false;
-    const showStatus = (message: string) => {
+    const showStatus = function(this: InteractiveState, message: string) {
       if (filtering && message === `Tool output: ${expanded ? 'expanded' : 'collapsed'}`) suppressed = true;
       else currentShowStatus.call(this, message);
     };

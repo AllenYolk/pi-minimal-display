@@ -90,3 +90,48 @@ test('a third-party wrapper cannot keep a disposed session alive through its dia
   assert.equal(result.error, undefined);
   assert.equal(result.status, 0, result.stderr);
 });
+
+test('a later status wrapper cannot keep a disposed session alive through the toggle adapter', () => {
+  const result = spawnSync(process.execPath, ['--expose-gc', '--input-type=module', '-e', `
+    import assert from 'node:assert/strict';
+    import * as Pi from '@earendil-works/pi-coding-agent';
+    import * as Tui from '@earendil-works/pi-tui';
+    import { installPresentation } from './dist/presentation.js';
+    import { loadConfig } from './dist/config.js';
+    Pi.initTheme('dark');
+    let retainedStatus;
+    function wrapStatus(captured) {
+      return function(message) { return captured.call(this, message); };
+    }
+    function retainStatus(mode) {
+      const captured = this.mode.showStatus;
+      retainedStatus = wrapStatus(captured);
+      this.mode.showStatus = retainedStatus;
+    }
+    function escapedSession() {
+      const session = Pi.SessionManager.inMemory(process.cwd());
+      const fake = {
+        session,
+        toolOutputExpanded: false,
+        customHeader: undefined,
+        builtInHeader: undefined,
+        loadedResourcesContainer: new Tui.Container(),
+        chatContainer: new Tui.Container(),
+        ui: { requestRender() {} },
+        showStatus() {},
+      };
+      const reference = new WeakRef(session);
+      const dispose = installPresentation(loadConfig('work/missing').config, Pi.VERSION, () => {}, { pi: Pi, tui: Tui, ui: { theme: { fg: (_c, text) => text, bg: (_c, text) => text, bold: text => text } }, session });
+      assert.equal(typeof dispose, 'function');
+      fake.chatContainer.addChild({ mode: fake, render: () => [], invalidate() {}, setExpanded: retainStatus });
+      Pi.InteractiveMode.prototype.setToolsExpanded.call(fake, true);
+      dispose();
+      return reference;
+    }
+    const reference = escapedSession();
+    for (let attempt = 0; attempt < 8; attempt++) { await new Promise(setImmediate); global.gc(); }
+    assert.equal(reference.deref(), undefined, 'temporary toggle adapter retains the old session');
+  `], { encoding: 'utf8', timeout: 15000 });
+  assert.equal(result.error, undefined);
+  assert.equal(result.status, 0, result.stderr);
+});

@@ -8,7 +8,7 @@ Rollout diagnosis confirmed that MiniMax-M3 is reasoning-capable and the latest 
 
 For migration, an old boolean `hideThinking` key is validated and ignored rather than copied into the new runtime config; it no longer controls rendering.
 
-38 local checks pass after removing the Assistant presentation patch and reducing certified host methods to the container and expansion-status seam. Native-visible and native-hidden Assistant components both remain unchanged under plugin installation; no plugin-owned thinking state or restoration path remains.
+39 local checks pass after removing the Assistant presentation patch and reducing certified host methods to the container and expansion-status seam. Native-visible and native-hidden Assistant components both remain unchanged under plugin installation; no plugin-owned thinking state or restoration path remains. The dedicated GC regression also covers a later status wrapper retaining the temporary adapter.
 
 ## Silent native expansion
 
