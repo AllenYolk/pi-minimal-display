@@ -1,6 +1,12 @@
 # Validation
 
-Current trial candidate: rc.6 development; the current installed trial is rc.5. Thinking display follows Pi's native `hideThinkingBlock` setting; the plugin has no corresponding setting. Older version evidence below is historical, not certification of later code.
+Current release candidate: `v0.1.0` for GitHub; the current installed local trial remains rc.6 on Pi 0.85.0. Thinking display follows Pi's native `hideThinkingBlock` setting; the plugin has no corresponding setting. Older evidence below is historical.
+
+## Host compatibility
+
+The release candidate removes the exact-version gate. It still requires the tested exports, writable descriptors and complete presentation-method signature; incompatible hosts fail closed to native display. This avoids a plugin release for Pi changes outside the patched seam. Pi 0.85.1 changed its bundled Assistant/status fingerprints, so that bundle received a separate allowlisted signature only after the full real-CLI suite passed; the unbundled presentation seam remained compatible. Pi core imports are `"*"` peers per Pi's package guidance, while development dependencies pin the latest tested host.
+
+On macOS arm64 and Node 24.12.0, all 40 checks pass against Pi 0.85.1. The same release working tree also passes 40/40 after installing Pi/Tui 0.85.0 without changing the lockfile; `npm ci` then restores the locked 0.85.1 host. The 0.85.1 synthetic 320-call benchmark renders 320/5,560 compact lines with 0.609/1.646 ms collapsed/expanded medians; this is compatibility evidence, not a speed claim.
 
 ## Native thinking visibility
 
@@ -8,7 +14,7 @@ Rollout diagnosis confirmed that MiniMax-M3 is reasoning-capable and the latest 
 
 For migration, an old boolean `hideThinking` key is validated and ignored rather than copied into the new runtime config; it no longer controls rendering.
 
-40 local checks pass. The rc.6 regression covers hidden-only merging, mixed hidden-thinking/visible-text ordering, runtime native visibility changes, existing components, streaming and disposal restoration. The adapter patches certified Assistant update/render methods but adds no visibility state and never changes session/model content. On the same synthetic 320-call workload, rc.5 → rc.6 compact medians were 0.854 → 0.704 ms collapsed and 1.855 → 2.091 ms expanded; displayed lines remained 320/5,560. These sub-millisecond run-to-run differences do not support a performance claim.
+40 local checks pass. The rc.6 regression covers hidden-only merging, mixed hidden-thinking/visible-text ordering, runtime native visibility changes, existing components, streaming and disposal restoration. The adapter patches tested Assistant update/render methods but adds no visibility state and never changes session/model content. On the same synthetic 320-call workload, rc.5 → rc.6 compact medians were 0.854 → 0.704 ms collapsed and 1.855 → 2.091 ms expanded; displayed lines remained 320/5,560. These sub-millisecond run-to-run differences do not support a performance claim.
 
 ## Silent native expansion
 
@@ -102,4 +108,4 @@ npm run benchmark -- work/upstream-large-session.jsonl
 
 ## Certification limits
 
-Only exact Pi 0.85.0 is accepted by the runtime gate. A future Pi version is not certified merely because npm resolves its peers. The [four-job CI matrix](https://github.com/AllenYolk/pi-minimal-display/actions/runs/33959587401) passed on Linux/macOS with Node 22.19.0/24.12.0 at reviewed commit `bc3c8b2`, including packed-artifact loading. Windows and alternative Pi runtimes are not certified by this candidate.
+Pi 0.85.0 and 0.85.1 are tested hosts. A future Pi version is accepted only while its presentation seam matches an allowlisted tested signature; matching is compatibility evidence, not full release certification. The historical [four-job CI matrix](https://github.com/AllenYolk/pi-minimal-display/actions/runs/33959587401) passed on Linux/macOS with Node 22.19.0/24.12.0 at commit `bc3c8b2`; current release evidence is recorded in issue #22. Windows and alternative Pi runtimes are not tested by this candidate.

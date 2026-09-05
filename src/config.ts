@@ -1,8 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
-export const CERTIFIED_PI_VERSION = '0.85.0';
-
 export type Mode = 'native' | 'count_only' | 'lines';
 export interface Config {
   grouping: boolean;

@@ -101,7 +101,7 @@ test('all colored padding is clickable, the leading gap is not, including after 
 
 test('a turn groups mixed calls, native expansion retains details, disposal restores the host', () => {
   const before = Container.prototype.render;
-  const dispose = installPresentation(config, '0.85.0', () => {});
+  const dispose = installPresentation(config, Pi.VERSION, () => {});
   assert.equal(typeof dispose, 'function');
   try {
     const transcript = new Container();
@@ -135,10 +135,10 @@ test('preexisting presentation-only wrappers are rejected without changing their
   let dispose;
   try {
     const messages = [];
-    dispose = installPresentation(config, '0.85.0', value => messages.push(value));
+    dispose = installPresentation(config, Pi.VERSION, value => messages.push(value));
     assert.equal(dispose, undefined);
     assert.equal(Container.prototype.render, wrapper);
-    assert.match(messages[0], /modified|conflict|certified/i);
+    assert.match(messages[0], /modified|conflict|incompatible/i);
   } finally { dispose?.(); Container.prototype.render = original; }
 });
 
@@ -150,7 +150,7 @@ test('a preexisting expansion wrapper is rejected without changing its owner', (
     const messages = [];
     assert.equal(installPresentation(config, Pi.VERSION, value => messages.push(value)), undefined);
     assert.equal(Pi.InteractiveMode.prototype.setToolsExpanded, wrapper);
-    assert.match(messages[0], /modified|certified/i);
+    assert.match(messages[0], /modified|incompatible/i);
   } finally { Pi.InteractiveMode.prototype.setToolsExpanded = original; }
 });
 
@@ -162,7 +162,7 @@ test('a preexisting Assistant wrapper is rejected without changing its owner', (
     const messages = [];
     assert.equal(installPresentation(config, Pi.VERSION, value => messages.push(value)), undefined);
     assert.equal(AssistantMessageComponent.prototype.updateContent, wrapper);
-    assert.match(messages[0], /modified|certified/i);
+    assert.match(messages[0], /modified|incompatible/i);
   } finally { AssistantMessageComponent.prototype.updateContent = original; }
 });
 
@@ -196,7 +196,7 @@ test('image-only user messages in the session split groups even without a visibl
   session.appendMessage({ role: 'assistant', content: [{ type: 'toolCall', id: 'a', name: 'bash', arguments: {} }], timestamp: 2 });
   session.appendMessage({ role: 'user', content: [{ type: 'image', data: 'fixture', mimeType: 'image/png' }], timestamp: 3 });
   session.appendMessage({ role: 'assistant', content: [{ type: 'toolCall', id: 'b', name: 'bash', arguments: {} }], timestamp: 4 });
-  const dispose = install(config, '0.85.0', () => {}, { pi: Pi, tui: Tui, ui, session });
+  const dispose = install(config, Pi.VERSION, () => {}, { pi: Pi, tui: Tui, ui, session });
   try {
     const transcript = new Container();
     transcript.addChild(tool('bash', 'a', 'A'));
@@ -240,7 +240,7 @@ test('thinking omission follows native component state and disposal restores nat
   const originalRender = AssistantMessageComponent.prototype.render;
   for (const hide of [false, true]) {
     const component = new AssistantMessageComponent(message, hide);
-    const dispose = installPresentation(config, '0.85.0', () => {});
+    const dispose = installPresentation(config, Pi.VERSION, () => {});
     try {
       const output = component.render(80).join('\n');
       if (hide) assert.doesNotMatch(output, /EARLIER THINKING|Thinking\.\.\./);
@@ -270,7 +270,7 @@ test('expanded tools match native output without duplicating raw data or changin
 });
 
 test('new members of an expanded group use their expanded native renderer', () => {
-  const dispose = installPresentation(config, '0.85.0', () => {});
+  const dispose = installPresentation(config, Pi.VERSION, () => {});
   try {
     const transcript = new Container();
     const first = tool('bash', 'first', 'FIRST');
@@ -285,7 +285,7 @@ test('new members of an expanded group use their expanded native renderer', () =
 
 test('a rendering-adapter fault restores native content and reports only once', () => {
   const messages = [];
-  const dispose = install(config, '0.85.0', value => messages.push(value), { pi: { ...Pi, keyText() { throw new Error('changed key helper'); } }, tui: Tui, ui });
+  const dispose = install(config, Pi.VERSION, value => messages.push(value), { pi: { ...Pi, keyText() { throw new Error('changed key helper'); } }, tui: Tui, ui });
   try {
     const transcript = new Container();
     transcript.addChild(tool('bash', 'safe', 'FALLBACK DETAIL'));
@@ -300,7 +300,7 @@ test('a changed host shape is rejected before patching', () => {
   const before = Container.prototype.render;
   for (const host of [{ pi: { ...Pi, ToolExecutionComponent: undefined }, tui: Tui, ui }, { pi: Pi, tui: Tui, ui: { theme: undefined } }]) {
     const messages = [];
-    assert.equal(install(config, '0.85.0', value => messages.push(value), host), undefined);
+    assert.equal(install(config, Pi.VERSION, value => messages.push(value), host), undefined);
     assert.equal(Container.prototype.render, before);
     assert.equal(messages.length, 1);
   }
@@ -331,7 +331,7 @@ test('disposed mouse wrappers do not render the transcript again', () => {
 });
 
 test('direct transcript changes and user/skill boundaries preserve native cards and failures', () => {
-  const dispose = installPresentation(config, '0.85.0', () => {});
+  const dispose = installPresentation(config, Pi.VERSION, () => {});
   try {
     const transcript = new Container();
     const first = tool('bash', 'failed', 'failure detail');
@@ -349,18 +349,20 @@ test('direct transcript changes and user/skill boundaries preserve native cards 
   } finally { dispose(); }
 });
 
-test('unsupported hosts stay native and old disposal preserves a later owner', () => {
+test('compatible host signatures load regardless of version and old disposal preserves a later owner', () => {
   const original = Container.prototype.render;
   const messages = [];
-  for (const version of ['0.85.1', '0.86.0', 'garbage', undefined]) {
-    assert.equal(installPresentation(config, version, message => messages.push(message)), undefined);
+  for (const version of ['0.85.0', '0.85.1', '0.86.0', 'garbage', undefined]) {
+    const dispose = installPresentation(config, version, message => messages.push(message));
+    assert.equal(typeof dispose, 'function');
+    dispose();
     assert.equal(Container.prototype.render, original);
   }
-  assert.equal(messages.length, 4);
-  const first = installPresentation(config, '0.85.0', () => {});
-  assert.equal(installPresentation(config, '0.85.0', () => {}), undefined);
+  assert.deepEqual(messages, []);
+  const first = installPresentation(config, Pi.VERSION, () => {});
+  assert.equal(installPresentation(config, Pi.VERSION, () => {}), undefined);
   first();
-  const second = installPresentation(config, '0.85.0', () => {});
+  const second = installPresentation(config, Pi.VERSION, () => {});
   const current = Container.prototype.render;
   first();
   assert.equal(Container.prototype.render, current);
@@ -371,7 +373,7 @@ test('unsupported hosts stay native and old disposal preserves a later owner', (
 test('third-party wrapping remains intact and disposed closures become native', () => {
   const original = Container.prototype.render;
   const originalExpansion = Pi.InteractiveMode.prototype.setToolsExpanded;
-  const dispose = installPresentation(config, '0.85.0', () => {});
+  const dispose = installPresentation(config, Pi.VERSION, () => {});
   const installed = Container.prototype.render;
   const installedExpansion = Pi.InteractiveMode.prototype.setToolsExpanded;
   function thirdParty(width) { return installed.call(this, width); }
@@ -389,7 +391,7 @@ test('third-party wrapping remains intact and disposed closures become native', 
 });
 
 test('ungrouped lines mode previews only a short display command, expansion preserves full arguments', () => {
-  const dispose = installPresentation({ ...config, grouping: false }, '0.85.0', () => {});
+  const dispose = installPresentation({ ...config, grouping: false }, Pi.VERSION, () => {});
   try {
     const command = '# check\nprintf "' + '中😀'.repeat(80) + '"\necho END_OF_COMMAND';
     const first = new ToolExecutionComponent('bash', 'long', { command }, {}, bash, ui, process.cwd());
@@ -409,7 +411,7 @@ test('ungrouped lines mode previews only a short display command, expansion pres
 });
 
 test('click expansion uses the projected group layout even after resizing', () => {
-  const dispose = installPresentation(config, '0.85.0', () => {});
+  const dispose = installPresentation(config, Pi.VERSION, () => {});
   try {
     const transcript = new Container();
     const first = tool('bash', 'one', 'ONE');
@@ -429,7 +431,7 @@ test('thinking visibility and streaming remain native across repeated installati
   const message = { role: 'assistant', content: [{ type: 'thinking', thinking: 'PRIVATE THOUGHT' }, { type: 'text', text: 'PUBLIC TEXT' }], stopReason: 'stop' };
   const serialized = JSON.stringify(message);
   for (let index = 0; index < 10; index++) {
-    const dispose = installPresentation(config, '0.85.0', () => {});
+    const dispose = installPresentation(config, Pi.VERSION, () => {});
     try {
       const component = new AssistantMessageComponent(message);
       component.updateContent(message, true);
@@ -447,7 +449,7 @@ test('thinking visibility and streaming remain native across repeated installati
 test('expanded native controls receive their original mouse events', () => {
   let clicks = 0;
   const definition = { ...bash, renderCall: () => new Text('native call', 0, 0), renderResult: () => new MouseRegion(new Text('NATIVE BUTTON', 0, 0), () => { clicks++; return { handled: true }; }) };
-  const dispose = installPresentation(config, '0.85.0', () => {});
+  const dispose = installPresentation(config, Pi.VERSION, () => {});
   try {
     const transcript = new Container();
     const call = tool('bash', 'button', '', definition);

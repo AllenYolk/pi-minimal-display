@@ -4,9 +4,9 @@ import type * as Pi from '@earendil-works/pi-coding-agent';
 import type * as Tui from '@earendil-works/pi-tui';
 import { stripVTControlCharacters } from 'node:util';
 import { createHash } from 'node:crypto';
-import { CERTIFIED_PI_VERSION, type Config } from './config.js';
+import type { Config } from './config.js';
 
-// Pi 0.85.0 presentation state; all private host knowledge stays in this module.
+// Pi 0.85.1 presentation state; all private host knowledge stays in this module.
 type ToolState = {
   toolName: string;
   toolCallId: string;
@@ -28,10 +28,11 @@ type AssistantState = {
 const stateOf = (tool: ToolExecutionComponent) => tool as unknown as ToolState;
 const assistantStateOf = (message: AssistantMessageComponent) => message as unknown as AssistantState;
 const ownerKey = Symbol.for('@allenyolk/pi-minimal-display/owner');
-// Published 0.85.0 SDK and bundled CLI methods: Container render/mouse, Assistant update/render, Interactive expansion/status.
-const certifiedMethods = new Set([
+// Published 0.85.1 SDK and bundled CLI methods: Container render/mouse, Assistant update/render, Interactive expansion/status.
+const compatibleMethodSignatures = new Set([
   '3f8010cdede34c16dfa87b5544057cce2e38fe948c62b78998fd3630e2ad3311:702b6e2da7967989f0cf08e068f1405aede2ae529f48ec45f33402f83c3213d4:fd0c8ba64d8a398fce1ff73d93e43bc70b66ba50e06491ddeb4826c37992a302:b32d71cf32320dd71d4c6edc6a606da7340b6635bf05e2368ba5ef43bbdc6e50:2a09d118eaceb306f5fee34efd7311dd2f17b89b704ee591e4872a7476b18728:94a9c04043b5d37a132d63bb6ef1d40e1d51f5a430799e2eefee096d3289ee99',
   '1bd938ca53360d12d6dcea0c955a5c4346f00eb2d6b67cec2dcf8a8911535b92:9316e9def7d88924b6e4f5c106d7dd9b54d217a4f59890b4ce3260ab3a571259:ac42dc0addeaf9fb23d004b1e7ea9fe41ed770a8c7077adbcb8c4af950d22a78:706329ba0e6e22acb726e6d444f23754f16fcce5cc021b7574a44b2480e2ec71:d85be3dbecebd5e1573f709505d2a7f1a715c86b8f4e22a1b738f9732caa2a4b:388a1f191e3725bf04113c7a2523af234f51730328440410a7764feaa7e45b18',
+  '1bd938ca53360d12d6dcea0c955a5c4346f00eb2d6b67cec2dcf8a8911535b92:9316e9def7d88924b6e4f5c106d7dd9b54d217a4f59890b4ce3260ab3a571259:21231e9a625e9f97c43361e980af32dce7f77573e4edef89367971a0a521e269:706329ba0e6e22acb726e6d444f23754f16fcce5cc021b7574a44b2480e2ec71:d85be3dbecebd5e1573f709505d2a7f1a715c86b8f4e22a1b738f9732caa2a4b:d145aab960ecbe1fb83c1d67d5f473c7f1c64769a500288899075d1fd12e9d14',
 ]);
 
 function displayText(value: unknown): string {
@@ -39,10 +40,6 @@ function displayText(value: unknown): string {
 }
 
 export function installPresentation(config: Config, version: unknown, report: (message: string) => void, host: { pi: typeof Pi; tui: typeof Tui; ui: Pick<Pi.ExtensionContext['ui'], 'theme'>; session?: Pick<Pi.SessionManager, 'getBranch'> }): (() => void) | undefined {
-  if (version !== CERTIFIED_PI_VERSION) {
-    report(`Pi ${String(version)} is not certified (expected ${CERTIFIED_PI_VERSION}); using native display`);
-    return;
-  }
   const { AssistantMessageComponent, InteractiveMode, ToolExecutionComponent, keyText } = host.pi;
   const { Container, Text, Box, Spacer, MouseRegion, truncateToWidth } = host.tui;
   const initialTheme = host.ui?.theme;
@@ -73,8 +70,8 @@ export function installPresentation(config: Config, version: unknown, report: (m
     return;
   }
   const signature = [originalRender, originalMouse, originalUpdate, originalAssistantRender, originalSetToolsExpanded, originalShowStatus].map(method => createHash('sha256').update(Function.prototype.toString.call(method)).digest('hex')).join(':');
-  if (!certifiedMethods.has(signature)) {
-    report('Pi presentation methods are modified or not certified; using native display');
+  if (!compatibleMethodSignatures.has(signature)) {
+    report(`Pi ${String(version)} presentation methods are incompatible; using native display`);
     return;
   }
   let active: Config | undefined = config;

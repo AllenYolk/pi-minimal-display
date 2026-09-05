@@ -40,7 +40,7 @@ jobs:
       - name: Report certification drift without widening support
         run: |
           current=$(npm view @earendil-works/pi-coding-agent version)
-          certified=$(node -p "require('./package.json').peerDependencies['@earendil-works/pi-coding-agent']")
+          certified=$(node -p "require('./package.json').devDependencies['@earendil-works/pi-coding-agent']")
           echo "Published Pi: $current; certified Pi: $certified" >> "$GITHUB_STEP_SUMMARY"
           if [ "$current" != "$certified" ]; then
             echo "::warning::A newer Pi release requires an explicit compatibility investigation. It is not certified by this job."

@@ -23,6 +23,7 @@ test('the actual tarball contains a self-contained Pi entry and loads without pe
   assert.equal(manifest.license, 'MIT');
   for (const key of ['preinstall', 'install', 'postinstall', 'prepare']) assert.equal(manifest.scripts[key], undefined);
   assert.equal(Object.keys(manifest.dependencies ?? {}).length, 0);
+  assert.deepEqual(manifest.peerDependencies, { '@earendil-works/pi-coding-agent': '*', '@earendil-works/pi-tui': '*' });
   assert.equal(existsSync(join(profile, 'node_modules/@earendil-works/pi-coding-agent')), false);
   runCliProbe(join(packageDir, manifest.pi.extensions[0]), 2, profile);
 });

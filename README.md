@@ -11,9 +11,29 @@ Failed tools are named in the summary, even while other calls are pending. Click
 
 Summaries use the current Pi theme and native tool-card padding/backgrounds. Failure takes precedence over pending work when selecting a background. Colored padding is clickable; the preceding blank line is not. Startup, new, resumed and forked sessions automatically begin minimal; `/reload` preserves Pi's current global expansion state. The existing tool shortcut (Ctrl+O by default) remains a two-state minimal/expanded toggle, including when rebound. This toggle is intentionally silent instead of inserting `Tool output: expanded/collapsed` into the transcript; the changed card detail is its feedback. `/minimal-display` only reports status and is never required to activate the extension.
 
-Status: rc.5 development; not published to npm. The runtime adapter accepts **Pi 0.85.0 only**. Unknown versions stay native and display a diagnostic. Compatibility results and limitations live in [validation](docs/validation.md).
+Status: `v0.1.0` release candidate for GitHub. The runtime adapter is tested on Pi 0.85.0 and 0.85.1. It accepts hosts whose patched presentation methods match a tested signature, so unrelated Pi releases do not require a plugin update; incompatible hosts stay native and display a diagnostic. Compatibility results and limitations live in [validation](docs/validation.md).
 
-## Try in an isolated profile
+## Install from GitHub
+
+Follow the default branch and receive compatible updates with `pi update --extensions` or `pi update --all`:
+
+```sh
+pi install git:github.com/AllenYolk/pi-minimal-display
+```
+
+Or pin an immutable release; pinned refs do not advance during Pi updates:
+
+```sh
+pi install git:github.com/AllenYolk/pi-minimal-display@v0.1.0
+```
+
+For one run without changing settings:
+
+```sh
+pi -e git:github.com/AllenYolk/pi-minimal-display@v0.1.0
+```
+
+## Try local source in an isolated profile
 
 From this repository, using your existing Pi installation:
 
@@ -29,7 +49,7 @@ For a local package installation into a profile you have chosen:
 pi install /absolute/path/to/pi-minimal-display
 ```
 
-The repository and the packed npm artifact both point to `src/index.ts`. No generated `dist/` is required for Pi loading. An npm install command will be added after publication; the package name is `@allenyolk/pi-minimal-display`.
+The repository and packed artifact both point to `src/index.ts`. No generated `dist/` is required for Pi loading. npm publication may be added later; it is not required for GitHub installation.
 
 ## Configuration
 
@@ -74,7 +94,7 @@ This extension temporarily patches Pi's in-memory container rendering, mouse rou
 
 Installation checks the exact version, required exports/descriptors, and fingerprints of the host methods it patches. Shutdown and reload dispose owned patches; a runtime presentation failure disables the adapter and reports the fallback. Do not run it alongside `pi-tool-display`, `pi-tool-compact-display`, or `pi-compact-display`. Known tool-owner conflicts and prior modifications to the patched methods are rejected. Arbitrary third-party prototype patch combinations are not supported.
 
-To recover, restart Pi without this extension. For a local package registered with `pi install`, remove that same source with `pi remove /absolute/path/to/pi-minimal-display`, then restart. The configuration file can be kept. Running `pi --no-extensions` provides a diagnostic session with all auto-discovered extensions disabled.
+To recover, restart Pi without this extension. Remove the same source used for installation—for example `pi remove git:github.com/AllenYolk/pi-minimal-display` or the pinned source—then restart. The configuration file can be kept. Running `pi --no-extensions` provides a diagnostic session with all auto-discovered extensions disabled.
 
 ## Development
 
@@ -88,7 +108,7 @@ npm run benchmark
 npm pack --ignore-scripts
 ```
 
-`npm run check` includes type checking, configuration/component regressions, real InteractiveMode replay/keyboard/mouse/image checks, a bundled Pi CLI probe with ten reloads, and an actual packed-artifact load. Tests use disposable directories under ignored `work/` and never alter the daily Pi profile. `@earendil-works/pi-server` is a development-only workaround for the 0.85.0 SDK's import of an undeclared server package; it is not shipped or needed by the extension.
+`npm run check` includes type checking, configuration/component regressions, real InteractiveMode replay/keyboard/mouse/image checks, a bundled Pi CLI probe with ten reloads, and an actual packed-artifact load. Tests use disposable directories under ignored `work/` and never alter the daily Pi profile.
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for issue, review, and release gates. The authoritative contract is [issue #1](https://github.com/AllenYolk/pi-minimal-display/issues/1).
 

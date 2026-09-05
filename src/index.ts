@@ -1,6 +1,6 @@
 import * as Pi from '@earendil-works/pi-coding-agent';
 import * as Tui from '@earendil-works/pi-tui';
-import { CERTIFIED_PI_VERSION, loadConfig } from './config.js';
+import { loadConfig } from './config.js';
 import { installPresentation } from './presentation.js';
 
 export default function minimalDisplay(pi: Pi.ExtensionAPI): void {
@@ -12,10 +12,6 @@ export default function minimalDisplay(pi: Pi.ExtensionAPI): void {
     dispose = undefined;
     if (ctx.mode !== 'tui' || !ctx.hasUI) return;
     const report = (message: string) => { status = message; ctx.ui.notify(`pi-minimal-display: ${message}`, 'warning'); };
-    if (Pi.VERSION !== CERTIFIED_PI_VERSION) {
-      report(`Pi ${Pi.VERSION} is not certified (expected ${CERTIFIED_PI_VERSION}); using native display`);
-      return;
-    }
     const conflict = pi.getAllTools().find(tool => /(?:^|[/@:])(?:pi-tool-display|pi-tool-compact-display|pi-compact-display)(?:[/@]|$)/.test(tool.sourceInfo?.source ?? '') || /\/(?:pi-tool-display|pi-tool-compact-display|pi-compact-display)\//.test(tool.sourceInfo?.path ?? ''));
     if (conflict) {
       report(`Conflicting renderer owns ${conflict.name}; disable the other display extension and restart Pi`);

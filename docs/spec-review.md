@@ -14,7 +14,7 @@ Owner trial feedback supersedes whole-turn grouping in [issue #10](https://githu
 
 ## Starting point
 
-This project follows the Pi Minimal Display handoff prepared on 2026-09-05. The GitHub repository is AllenYolk/pi-minimal-display. The owner subsequently selected MIT; the candidate package is named @allenyolk/pi-minimal-display. Package publication remains a separate owner decision.
+This project follows the Pi Minimal Display handoff prepared on 2026-09-05. The GitHub repository is AllenYolk/pi-minimal-display. The owner subsequently selected MIT and a GitHub-only initial release; npm publication remains a later decision.
 
 Primary references:
 
@@ -31,7 +31,7 @@ The previous handoff is input to this review, not proof that its architecture or
 2. **Expanded content follows native presentation.** Per issue #12, expanded tool output must match Pi's native renderer rather than duplicate raw data in an appendix. Original arguments, result blocks and structured details remain unchanged in session/model data, including when native renderers omit successful text or metadata. Images and controls stay native; output the host discarded cannot be recovered.
 3. **Display summaries stay out of message data.** Do not inject summaries into assistant messages and then remove them by matching an emoji prefix. Session serialization, model context, tool definitions, and execution results must remain unchanged.
 4. **Transcript structure is the authority.** Pi 0.85.0 inserts some entries using `chatContainer.children.splice(...)`, bypassing `addChild`. A separate mirror based only on container methods is incomplete. The first technical investigation must establish a reliable presentation seam for live updates, replay, queued input, skill invocation, fork, and reload.
-5. **Supported minor and tested release differ.** Initially certify the exact installed Pi release (currently 0.85.0). A broad `0.85.x` peer range alone cannot establish compatibility with future patch releases. Record the tested version set and structural assumptions; default unknown hosts to native display.
+5. **Compatibility follows the patched seam, not version text.** Record exact tested Pi versions, but activate when the required exports and patched method signatures match a tested host. This lets unrelated Pi releases continue working without weakening safe native fallback when the presentation seam changes. Wildcard Pi peer ranges are loader metadata, not proof of runtime compatibility.
 6. **Patch ownership needs a teardown protocol.** Each runtime instance owns its installed wrappers. Installation is atomic: validate before changing methods and roll back a partial failure. Disposing an older instance must not overwrite another extension's later wrapper. After disposal, stale wrappers must no longer suppress content or retain session state.
 7. **Errors are visible without relying only on color.** A collapsed card must identify a failed operation in text and retain an expansion path. Pending work must not mask an already failed member. Cancellation and rejected execution need defined terminal states.
 8. **Thinking visibility is native-only.** Use Pi's supported `hideThinkingBlock` setting. This plugin must not expose a duplicate visibility option or rewrite session/model content. Its compact projection omits the native hidden placeholder and crosses hidden-only thinking; visible thinking remains a boundary.

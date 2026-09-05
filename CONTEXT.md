@@ -18,4 +18,6 @@ Compact, inspectable presentation of Pi tool activity while preserving execution
 
 **Retained detail**: The command, text blocks, images, structured details, and truncation references available to Pi. It excludes content Pi has already discarded.
 
-**Certified host**: An exact Pi version whose presentation and lifecycle behavior has passed this project's checks.
+**Tested host**: An exact Pi version whose presentation and lifecycle behavior has passed this project's checks.
+
+**Compatible host**: A Pi runtime whose required exports and patched presentation-method signatures match a tested host. Version text alone does not decide compatibility.
