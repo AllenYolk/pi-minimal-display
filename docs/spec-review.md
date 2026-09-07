@@ -1,10 +1,10 @@
 # Specification review
 
-Status: Review direction approved by the owner on 2026-09-05. The authoritative implementation contract is the GitHub spec issue.
+Status: Review direction approved by the owner on 2026-09-05. The authoritative implementation contract is the GitHub spec issue. Issue #24 additionally requires Pi's native thinking-visibility toggle status to be silent, with the same action-scoped semantics as issue #16.
 
-The owner selected [silent native expansion (#16)](https://github.com/AllenYolk/pi-minimal-display/issues/16): preserve Pi's native two-state setter and repaint, but suppress only the exact mode notification emitted synchronously by that action. Do not route it to Starship or globally filter matching transcript text.
+The owner selected [silent native expansion (#16)](https://github.com/AllenYolk/pi-minimal-display/issues/16): preserve Pi's native two-state setter and repaint, but suppress only the exact mode notification emitted synchronously by that action. Do not route it to Starship or globally filter matching transcript text. [Issue #24](https://github.com/AllenYolk/pi-minimal-display/issues/24) applies the same rule to native thinking-visibility toggles.
 
-The owner subsequently removed the plugin-owned thinking switch: Pi's native `hideThinkingBlock` is the single visibility authority. [Issue #20](https://github.com/AllenYolk/pi-minimal-display/issues/20) further requires the compact projection to omit Pi's hidden-thinking placeholder and cross hidden-only thinking components, while visible thinking and assistant text remain boundaries.
+The owner subsequently removed the plugin-owned thinking switch: Pi's native `hideThinkingBlock` is the single visibility authority. [Issue #20](https://github.com/AllenYolk/pi-minimal-display/issues/20) further requires the compact projection to omit Pi's hidden-thinking placeholder and cross hidden-only thinking components, while visible thinking and assistant text remain boundaries. The owner later authorized publishing this #24 fix as both GitHub `v0.1.1` and the public npm package.
 
 Issue #18 removes the plugin `hideThinking` field. Issue #20 supersedes its prohibition on Assistant presentation adaptation: the adapter may filter only when the component's native `hideThinkingBlock` state says thinking is hidden, and must restore native presentation on disposal. A legacy plugin boolean may be accepted and ignored during migration, but cannot affect rendering.
 
@@ -14,7 +14,7 @@ Owner trial feedback supersedes whole-turn grouping in [issue #10](https://githu
 
 ## Starting point
 
-This project follows the Pi Minimal Display handoff prepared on 2026-09-05. The GitHub repository is AllenYolk/pi-minimal-display. The owner subsequently selected MIT and a GitHub-only initial release; npm publication remains a later decision.
+This project follows the Pi Minimal Display handoff prepared on 2026-09-05. The GitHub repository is AllenYolk/pi-minimal-display. The owner selected MIT and the v0.1.0 initial release was GitHub-only; for the current #24 delivery, the owner additionally authorized public npm publication of v0.1.1.
 
 Primary references:
 

@@ -10,7 +10,8 @@ test('the actual tarball contains a self-contained Pi entry and loads without pe
   const workspace = resolve(mkdtempSync('work/package-'));
   const pack = spawnSync('npm', ['pack', '--json', '--ignore-scripts', '--pack-destination', workspace], { encoding: 'utf8', timeout: 20000 });
   assert.equal(pack.status, 0, pack.stderr);
-  const [artifact] = JSON.parse(pack.stdout);
+  const packed = JSON.parse(pack.stdout);
+  const artifact = Array.isArray(packed) ? packed[0] : packed[Object.keys(packed)[0]];
   assert.deepEqual(artifact.files.map(file => file.path).sort(), ['LICENSE', 'README.md', 'package.json', 'src/config.ts', 'src/index.ts', 'src/presentation.ts']);
   const profile = join(workspace, 'profile');
   mkdirSync(profile);
