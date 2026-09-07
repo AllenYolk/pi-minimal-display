@@ -19,6 +19,7 @@ type ToolState = {
 type InteractiveState = {
   showStatus(message: string): void;
   setToolsExpanded(expanded: boolean): void;
+  toggleThinkingBlockVisibility(): void;
   ui: { requestRender(): void };
 };
 type AssistantState = {
@@ -28,11 +29,11 @@ type AssistantState = {
 const stateOf = (tool: ToolExecutionComponent) => tool as unknown as ToolState;
 const assistantStateOf = (message: AssistantMessageComponent) => message as unknown as AssistantState;
 const ownerKey = Symbol.for('@allenyolk/pi-minimal-display/owner');
-// Published 0.85.1 SDK and bundled CLI methods: Container render/mouse, Assistant update/render, Interactive expansion/status.
+// Published 0.85.1 SDK and bundled CLI methods: Container render/mouse, Assistant update/render, Interactive expansion/status/thinking visibility.
 const compatibleMethodSignatures = new Set([
-  '3f8010cdede34c16dfa87b5544057cce2e38fe948c62b78998fd3630e2ad3311:702b6e2da7967989f0cf08e068f1405aede2ae529f48ec45f33402f83c3213d4:fd0c8ba64d8a398fce1ff73d93e43bc70b66ba50e06491ddeb4826c37992a302:b32d71cf32320dd71d4c6edc6a606da7340b6635bf05e2368ba5ef43bbdc6e50:2a09d118eaceb306f5fee34efd7311dd2f17b89b704ee591e4872a7476b18728:94a9c04043b5d37a132d63bb6ef1d40e1d51f5a430799e2eefee096d3289ee99',
-  '1bd938ca53360d12d6dcea0c955a5c4346f00eb2d6b67cec2dcf8a8911535b92:9316e9def7d88924b6e4f5c106d7dd9b54d217a4f59890b4ce3260ab3a571259:ac42dc0addeaf9fb23d004b1e7ea9fe41ed770a8c7077adbcb8c4af950d22a78:706329ba0e6e22acb726e6d444f23754f16fcce5cc021b7574a44b2480e2ec71:d85be3dbecebd5e1573f709505d2a7f1a715c86b8f4e22a1b738f9732caa2a4b:388a1f191e3725bf04113c7a2523af234f51730328440410a7764feaa7e45b18',
-  '1bd938ca53360d12d6dcea0c955a5c4346f00eb2d6b67cec2dcf8a8911535b92:9316e9def7d88924b6e4f5c106d7dd9b54d217a4f59890b4ce3260ab3a571259:21231e9a625e9f97c43361e980af32dce7f77573e4edef89367971a0a521e269:706329ba0e6e22acb726e6d444f23754f16fcce5cc021b7574a44b2480e2ec71:d85be3dbecebd5e1573f709505d2a7f1a715c86b8f4e22a1b738f9732caa2a4b:d145aab960ecbe1fb83c1d67d5f473c7f1c64769a500288899075d1fd12e9d14',
+  '3f8010cdede34c16dfa87b5544057cce2e38fe948c62b78998fd3630e2ad3311:702b6e2da7967989f0cf08e068f1405aede2ae529f48ec45f33402f83c3213d4:fd0c8ba64d8a398fce1ff73d93e43bc70b66ba50e06491ddeb4826c37992a302:b32d71cf32320dd71d4c6edc6a606da7340b6635bf05e2368ba5ef43bbdc6e50:2a09d118eaceb306f5fee34efd7311dd2f17b89b704ee591e4872a7476b18728:94a9c04043b5d37a132d63bb6ef1d40e1d51f5a430799e2eefee096d3289ee99:8bb49631ed704cc47b0b29c31b5d0a0aabc1c2027db7be9fc7c95a54d11b96e1',
+  '1bd938ca53360d12d6dcea0c955a5c4346f00eb2d6b67cec2dcf8a8911535b92:9316e9def7d88924b6e4f5c106d7dd9b54d217a4f59890b4ce3260ab3a571259:ac42dc0addeaf9fb23d004b1e7ea9fe41ed770a8c7077adbcb8c4af950d22a78:706329ba0e6e22acb726e6d444f23754f16fcce5cc021b7574a44b2480e2ec71:d85be3dbecebd5e1573f709505d2a7f1a715c86b8f4e22a1b738f9732caa2a4b:388a1f191e3725bf04113c7a2523af234f51730328440410a7764feaa7e45b18:ceb99f440539e4f4c05fe57022e5541a83317a99534d07666e187e3b416f245c',
+  '1bd938ca53360d12d6dcea0c955a5c4346f00eb2d6b67cec2dcf8a8911535b92:9316e9def7d88924b6e4f5c106d7dd9b54d217a4f59890b4ce3260ab3a571259:21231e9a625e9f97c43361e980af32dce7f77573e4edef89367971a0a521e269:706329ba0e6e22acb726e6d444f23754f16fcce5cc021b7574a44b2480e2ec71:d85be3dbecebd5e1573f709505d2a7f1a715c86b8f4e22a1b738f9732caa2a4b:d145aab960ecbe1fb83c1d67d5f473c7f1c64769a500288899075d1fd12e9d14:ceb99f440539e4f4c05fe57022e5541a83317a99534d07666e187e3b416f245c',
 ]);
 
 function displayText(value: unknown): string {
@@ -64,12 +65,14 @@ export function installPresentation(config: Config, version: unknown, report: (m
   const interactiveProto = InteractiveMode.prototype as unknown as InteractiveState;
   const expansionDescriptor = Object.getOwnPropertyDescriptor(interactiveProto, 'setToolsExpanded');
   const originalSetToolsExpanded = interactiveProto.setToolsExpanded;
+  const thinkingDescriptor = Object.getOwnPropertyDescriptor(interactiveProto, 'toggleThinkingBlockVisibility');
+  const originalToggleThinkingBlockVisibility = interactiveProto.toggleThinkingBlockVisibility;
   const originalShowStatus = interactiveProto.showStatus;
-  if (typeof originalRender !== 'function' || !descriptor?.writable || !mouseDescriptor?.writable || typeof originalMouse !== 'function' || !Object.isExtensible(proto) || typeof originalUpdate !== 'function' || !assistantUpdateDescriptor?.writable || !assistantRenderDescriptor?.writable || typeof originalAssistantRender !== 'function' || !Object.isExtensible(assistantProto) || typeof originalSetToolsExpanded !== 'function' || !expansionDescriptor?.writable || typeof originalShowStatus !== 'function' || !Object.isExtensible(interactiveProto)) {
+  if (typeof originalRender !== 'function' || !descriptor?.writable || !mouseDescriptor?.writable || typeof originalMouse !== 'function' || !Object.isExtensible(proto) || typeof originalUpdate !== 'function' || !assistantUpdateDescriptor?.writable || !assistantRenderDescriptor?.writable || typeof originalAssistantRender !== 'function' || !Object.isExtensible(assistantProto) || typeof originalSetToolsExpanded !== 'function' || !expansionDescriptor?.writable || typeof originalToggleThinkingBlockVisibility !== 'function' || !thinkingDescriptor?.writable || typeof originalShowStatus !== 'function' || !Object.isExtensible(interactiveProto)) {
     report('Pi container rendering is incompatible; using native display');
     return;
   }
-  const signature = [originalRender, originalMouse, originalUpdate, originalAssistantRender, originalSetToolsExpanded, originalShowStatus].map(method => createHash('sha256').update(Function.prototype.toString.call(method)).digest('hex')).join(':');
+  const signature = [originalRender, originalMouse, originalUpdate, originalAssistantRender, originalSetToolsExpanded, originalShowStatus, originalToggleThinkingBlockVisibility].map(method => createHash('sha256').update(Function.prototype.toString.call(method)).digest('hex')).join(':');
   if (!compatibleMethodSignatures.has(signature)) {
     report(`Pi ${String(version)} presentation methods are incompatible; using native display`);
     return;
@@ -248,6 +251,27 @@ export function installPresentation(config: Config, version: unknown, report: (m
     }
   }
 
+  function toggleThinkingBlockVisibility(this: InteractiveState) {
+    if (!active) return originalToggleThinkingBlockVisibility.call(this);
+    const ownStatus = Object.getOwnPropertyDescriptor(this, 'showStatus');
+    const currentShowStatus = this.showStatus;
+    let filtering = true;
+    const showStatus = function(this: InteractiveState, message: string) {
+      if (filtering && /^Thinking blocks: (?:hidden|visible)$/.test(message)) return;
+      currentShowStatus.call(this, message);
+    };
+    Object.defineProperty(this, 'showStatus', { value: showStatus, configurable: true, writable: true });
+    try {
+      return originalToggleThinkingBlockVisibility.call(this);
+    } finally {
+      filtering = false;
+      if (this.showStatus === showStatus) {
+        if (ownStatus) Object.defineProperty(this, 'showStatus', ownStatus);
+        else delete (this as unknown as { showStatus?: InteractiveState['showStatus'] }).showStatus;
+      }
+    }
+  }
+
   const dispose = () => {
     active = undefined;
     session = undefined;
@@ -258,6 +282,7 @@ export function installPresentation(config: Config, version: unknown, report: (m
     if (assistantProto.updateContent === updateContent) Object.defineProperty(assistantProto, 'updateContent', assistantUpdateDescriptor);
     if (assistantProto.render === renderAssistant) Object.defineProperty(assistantProto, 'render', assistantRenderDescriptor);
     if (interactiveProto.setToolsExpanded === setToolsExpanded) Object.defineProperty(interactiveProto, 'setToolsExpanded', expansionDescriptor);
+    if (interactiveProto.toggleThinkingBlockVisibility === toggleThinkingBlockVisibility) Object.defineProperty(interactiveProto, 'toggleThinkingBlockVisibility', thinkingDescriptor);
     if (proto[ownerKey] === dispose) delete proto[ownerKey];
     for (const reference of filteredAssistantRefs) reference.deref()?.invalidate();
     filteredAssistantRefs.clear();
@@ -269,6 +294,7 @@ export function installPresentation(config: Config, version: unknown, report: (m
     assistantProto.updateContent = updateContent;
     assistantProto.render = renderAssistant;
     interactiveProto.setToolsExpanded = setToolsExpanded;
+    interactiveProto.toggleThinkingBlockVisibility = toggleThinkingBlockVisibility;
   } catch (error) {
     const notify = report;
     dispose();

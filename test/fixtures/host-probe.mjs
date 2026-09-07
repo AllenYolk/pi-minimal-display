@@ -94,6 +94,16 @@ try {
   mode.hideThinkingBlock = false;
   mode.updateThinkingBlockVisibility();
   assert.match(render(), /REPLAY THINKING/);
+  mode.defaultEditor.handleInput('\x14');
+  assert.equal(mode.hideThinkingBlock, true);
+  assert.equal(mode.settingsManager.getHideThinkingBlock(), true);
+  assert.doesNotMatch(render(), /REPLAY THINKING|Thinking\.\.\./);
+  assert.doesNotMatch(render(), /Thinking blocks: (?:hidden|visible)/, 'thinking toggle status must stay out of the transcript');
+  mode.defaultEditor.handleInput('\x14');
+  assert.equal(mode.hideThinkingBlock, false);
+  assert.equal(mode.settingsManager.getHideThinkingBlock(), false);
+  assert.match(render(), /REPLAY THINKING/);
+  assert.doesNotMatch(render(), /Thinking blocks: (?:hidden|visible)/, 'both thinking toggle directions must stay silent');
   mode.defaultEditor.handleInput(expandInput);
   const expanded = render();
   assert.doesNotMatch(expanded, /Tool output: (?:expanded|collapsed)/);

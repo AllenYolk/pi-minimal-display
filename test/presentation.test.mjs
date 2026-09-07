@@ -154,6 +154,36 @@ test('a preexisting expansion wrapper is rejected without changing its owner', (
   } finally { Pi.InteractiveMode.prototype.setToolsExpanded = original; }
 });
 
+test('thinking visibility toggle is silent only during the native action and restores on failure', () => {
+  const statuses = [];
+  let fail = false;
+  const settings = { value: false, setHideThinkingBlock(value) { this.value = value; } };
+  const fake = {
+    hideThinkingBlock: false,
+    settingsManager: settings,
+    updateThinkingBlockVisibility() {
+      this.showStatus('UNRELATED STATUS');
+      if (fail) throw new Error('thinking update failed');
+    },
+    showStatus(message) { statuses.push(message); },
+  };
+  const dispose = installPresentation(config, Pi.VERSION, () => {});
+  try {
+    Pi.InteractiveMode.prototype.toggleThinkingBlockVisibility.call(fake);
+    Pi.InteractiveMode.prototype.toggleThinkingBlockVisibility.call(fake);
+    assert.equal(fake.hideThinkingBlock, false);
+    assert.equal(settings.value, false);
+    assert.deepEqual(statuses, ['UNRELATED STATUS', 'UNRELATED STATUS']);
+    fake.showStatus('Thinking blocks: visible');
+    assert.deepEqual(statuses, ['UNRELATED STATUS', 'UNRELATED STATUS', 'Thinking blocks: visible']);
+    const originalStatus = fake.showStatus;
+    fail = true;
+    assert.throws(() => Pi.InteractiveMode.prototype.toggleThinkingBlockVisibility.call(fake), /thinking update failed/);
+    assert.equal(fake.showStatus, originalStatus);
+    assert.deepEqual(statuses, ['UNRELATED STATUS', 'UNRELATED STATUS', 'Thinking blocks: visible', 'UNRELATED STATUS']);
+  } finally { dispose(); }
+});
+
 test('a preexisting Assistant wrapper is rejected without changing its owner', () => {
   const original = AssistantMessageComponent.prototype.updateContent;
   function wrapper(...args) { return original.apply(this, args); }

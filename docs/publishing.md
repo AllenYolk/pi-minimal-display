@@ -15,10 +15,10 @@ The packed artifact is still checked because it catches accidental files, depend
 pi install git:github.com/AllenYolk/pi-minimal-display
 
 # Pin one immutable release
-pi install git:github.com/AllenYolk/pi-minimal-display@v0.1.0
+pi install git:github.com/AllenYolk/pi-minimal-display@v0.1.1
 
 # One-run trial
-pi -e git:github.com/AllenYolk/pi-minimal-display@v0.1.0
+pi -e git:github.com/AllenYolk/pi-minimal-display@v0.1.1
 
 pi remove git:github.com/AllenYolk/pi-minimal-display
 ```
@@ -35,6 +35,10 @@ pi remove git:github.com/AllenYolk/pi-minimal-display
 
 GitHub release descriptions can be edited, but release tags are treated as immutable. Fixes receive a new SemVer version and tag (`v0.1.1`, `v0.2.0`, and so on); do not move or reuse an existing release tag. See [GitHub release management](https://docs.github.com/repositories/releasing-projects-on-github/managing-releases-in-a-repository).
 
-## npm later
+## Release `v0.1.1`
 
-The existing package metadata is ready for a future public scoped npm package, but no npm account or npm publication is required now. npm registry tarballs are immutable: once a `name@version` has been published, fixes require a new version even if the old one is unpublished. See [npm scoped public packages](https://docs.npmjs.com/creating-and-publishing-scoped-public-packages/) and the [npm unpublish policy](https://docs.npmjs.com/policies/unpublish/).
+This patch release silently routes the exact native thinking-visibility status emitted by Pi's toggle action while preserving native state, persistence, repaint and unrelated status messages. It adds the matching host signatures and real-host regression coverage. Publish the immutable GitHub tag and public npm package from the exact release commit.
+
+## npm publication
+
+`@allenyolk/pi-minimal-display@0.1.1` is a public scoped npm package. npm registry tarballs are immutable: once a `name@version` has been published, fixes require a new version even if the old one is unpublished. See [npm scoped public packages](https://docs.npmjs.com/creating-and-publishing-scoped-public-packages/) and the [npm unpublish policy](https://docs.npmjs.com/policies/unpublish/).

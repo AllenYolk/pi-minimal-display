@@ -1,6 +1,6 @@
 # Validation
 
-Current release candidate: `v0.1.0` for GitHub; the current installed local trial remains rc.6 on Pi 0.85.0. Thinking display follows Pi's native `hideThinkingBlock` setting; the plugin has no corresponding setting. Older evidence below is historical.
+Current release candidate: `v0.1.1` for GitHub and npm. Thinking display follows Pi's native `hideThinkingBlock` setting; the plugin has no corresponding setting. Older evidence below is historical.
 
 ## Host compatibility
 
@@ -19,6 +19,10 @@ For migration, an old boolean `hideThinking` key is validated and ignored rather
 ## Silent native expansion
 
 The adapter keeps Pi's certified `setToolsExpanded` implementation and temporarily routes only its exact synchronous `Tool output: expanded/collapsed` call away from `showStatus`, then requests the render that notification previously triggered. It restores any instance-local status method in `finally`; other statuses during the action and identical status text outside it remain visible. The setter wrapper is fingerprint-gated, owner-aware, reversible and inert after disposal. There is no transcript string filter, key interception, Starship coupling, timer or new setting.
+
+## Silent native thinking visibility
+
+Issue #24 applies the same action-scoped status routing to Pi's native `toggleThinkingBlockVisibility` method. Native state changes, persistence and repaint remain authoritative; only the exact synchronous `Thinking blocks: hidden/visible` status is suppressed. Status text emitted outside the toggle and unrelated status calls remain visible. The added regression covers both directions and the failure path that restores the original status method.
 
 38 local checks pass. Real Ctrl+O/custom Ctrl+G and ten CLI reloads toggle/repaint without either mode line. A later same-turn ReadSeek call remains in the adjacent group, proving the removed line no longer creates a boundary. Failure restoration, preexisting/later wrappers, first paint, package loading, images, native expansion and session/UI GC remain covered. The same public 391-call benchmark renders 2,983/14,889 collapsed/expanded lines; local native → plugin medians were 2.749 → 1.928 ms collapsed and 3.659 → 4.123 ms expanded. The toggle path is not part of this render-only benchmark, so no performance claim follows. Exact independent review, CI and deployment evidence is recorded in issue #16 before promotion.
 

@@ -9,9 +9,9 @@ succeeded · ctrl+o to expand
 
 Failed tools are named in the summary, even while other calls are pending. Click a group or use Pi's configured tool-expansion shortcut to inspect its retained native details. Execution, tool definitions, model context, and saved conversation data are unchanged.
 
-Summaries use the current Pi theme and native tool-card padding/backgrounds. Failure takes precedence over pending work when selecting a background. Colored padding is clickable; the preceding blank line is not. Startup, new, resumed and forked sessions automatically begin minimal; `/reload` preserves Pi's current global expansion state. The existing tool shortcut (Ctrl+O by default) remains a two-state minimal/expanded toggle, including when rebound. This toggle is intentionally silent instead of inserting `Tool output: expanded/collapsed` into the transcript; the changed card detail is its feedback. `/minimal-display` only reports status and is never required to activate the extension.
+Summaries use the current Pi theme and native tool-card padding/backgrounds. Failure takes precedence over pending work when selecting a background. Colored padding is clickable; the preceding blank line is not. Startup, new, resumed and forked sessions automatically begin minimal; `/reload` preserves Pi's current global expansion state. The existing tool shortcut (Ctrl+O by default) remains a two-state minimal/expanded toggle, including when rebound. This toggle is intentionally silent instead of inserting `Tool output: expanded/collapsed` into the transcript; the changed card detail is its feedback. Pi's native thinking-visibility shortcut (Ctrl+T by default) is likewise silent; the changed assistant presentation is its feedback. `/minimal-display` only reports status and is never required to activate the extension.
 
-Status: `v0.1.0` release candidate for GitHub. The runtime adapter is tested on Pi 0.85.0 and 0.85.1. It accepts hosts whose patched presentation methods match a tested signature, so unrelated Pi releases do not require a plugin update; incompatible hosts stay native and display a diagnostic. Compatibility results and limitations live in [validation](docs/validation.md).
+Status: `v0.1.1` release candidate for GitHub and npm. The runtime adapter is tested on Pi 0.85.0 and 0.85.1. It accepts hosts whose patched presentation methods match a tested signature, so unrelated Pi releases do not require a plugin update; incompatible hosts stay native and display a diagnostic. Compatibility results and limitations live in [validation](docs/validation.md).
 
 ## Install from GitHub
 
@@ -24,13 +24,13 @@ pi install git:github.com/AllenYolk/pi-minimal-display
 Or pin an immutable release; pinned refs do not advance during Pi updates:
 
 ```sh
-pi install git:github.com/AllenYolk/pi-minimal-display@v0.1.0
+pi install git:github.com/AllenYolk/pi-minimal-display@v0.1.1
 ```
 
 For one run without changing settings:
 
 ```sh
-pi -e git:github.com/AllenYolk/pi-minimal-display@v0.1.0
+pi -e git:github.com/AllenYolk/pi-minimal-display@v0.1.1
 ```
 
 ## Try local source in an isolated profile
@@ -49,7 +49,7 @@ For a local package installation into a profile you have chosen:
 pi install /absolute/path/to/pi-minimal-display
 ```
 
-The repository and packed artifact both point to `src/index.ts`. No generated `dist/` is required for Pi loading. npm publication may be added later; it is not required for GitHub installation.
+The repository, packed artifact and npm package all point to `src/index.ts`. No generated `dist/` is required for Pi loading; npm publication is not required for GitHub installation.
 
 ## Configuration
 
@@ -90,7 +90,7 @@ Groups end at intervening visible assistant text/thinking, native tools, other t
 
 ## Runtime patches and recovery
 
-This extension temporarily patches Pi's in-memory container rendering, mouse routing, Assistant presentation and native expansion-status routing. Pi's native component state remains the sole thinking-visibility authority; the plugin only removes its hidden placeholder from the compact projection. It never edits installed Pi files and never registers replacement tools. All private host assumptions are kept in [presentation.ts](src/presentation.ts).
+This extension temporarily patches Pi's in-memory container rendering, mouse routing, Assistant presentation, and native expansion/status routing for tool and thinking toggles. Pi's native component state remains the sole thinking-visibility authority; the plugin only removes its hidden placeholder from the compact projection. It never edits installed Pi files and never registers replacement tools. All private host assumptions are kept in [presentation.ts](src/presentation.ts).
 
 Installation checks required exports/descriptors and fingerprints of the host methods it patches, not the Pi version string. Shutdown and reload dispose owned patches; a runtime presentation failure disables the adapter and reports the fallback. Do not run it alongside `pi-tool-display`, `pi-tool-compact-display`, or `pi-compact-display`. Known tool-owner conflicts and prior modifications to the patched methods are rejected. Arbitrary third-party prototype patch combinations are not supported.
 
