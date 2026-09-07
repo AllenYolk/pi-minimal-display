@@ -24,6 +24,8 @@ The adapter keeps Pi's certified `setToolsExpanded` implementation and temporari
 
 Issue #24 applies the same action-scoped status routing to Pi's native `toggleThinkingBlockVisibility` method. Native state changes, persistence and repaint remain authoritative; only the exact synchronous `Thinking blocks: hidden/visible` status is suppressed. Status text emitted outside the toggle and unrelated status calls remain visible. The added regression covers both directions and the failure path that restores the original status method.
 
+For #24, `npm run check` passed 41/41 on Pi 0.85.0 and Pi 0.85.1, including real host Ctrl+T toggles in both directions; `npm run benchmark` passed on Pi 0.85.1. The npm 0.1.1 tarball contains only the six approved package files and loads its source entry without bundled Pi runtime dependencies.
+
 38 local checks pass. Real Ctrl+O/custom Ctrl+G and ten CLI reloads toggle/repaint without either mode line. A later same-turn ReadSeek call remains in the adjacent group, proving the removed line no longer creates a boundary. Failure restoration, preexisting/later wrappers, first paint, package loading, images, native expansion and session/UI GC remain covered. The same public 391-call benchmark renders 2,983/14,889 collapsed/expanded lines; local native → plugin medians were 2.749 → 1.928 ms collapsed and 3.659 → 4.123 ms expanded. The toggle path is not part of this render-only benchmark, so no performance claim follows. Exact independent review, CI and deployment evidence is recorded in issue #16 before promotion.
 
 ## Native cards and automatic minimal

@@ -14,7 +14,7 @@ Owner trial feedback supersedes whole-turn grouping in [issue #10](https://githu
 
 ## Starting point
 
-This project follows the Pi Minimal Display handoff prepared on 2026-09-05. The GitHub repository is AllenYolk/pi-minimal-display. The owner subsequently selected MIT and a GitHub-only initial release; npm publication remains a later decision.
+This project follows the Pi Minimal Display handoff prepared on 2026-09-05. The GitHub repository is AllenYolk/pi-minimal-display. The owner selected MIT and the v0.1.0 initial release was GitHub-only; for the current #24 delivery, the owner additionally authorized public npm publication of v0.1.1.
 
 Primary references:
 
